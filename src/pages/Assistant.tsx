@@ -109,8 +109,8 @@ export default function Assistant() {
                 {msg.sender === 'user' ? <User className="w-4 h-4 text-white" /> : <Bot className="w-4 h-4 text-white" />}
               </div>
               <div className={`px-4 py-3 rounded-2xl ${msg.sender === 'user'
-                  ? 'bg-indigo-600 text-white rounded-br-md'
-                  : 'bg-white text-gray-800 border border-gray-200 rounded-bl-md shadow-sm'
+                ? 'bg-indigo-600 text-white rounded-br-md'
+                : 'bg-white text-gray-800 border border-gray-200 rounded-bl-md shadow-sm'
                 }`}>
                 {msg.isLoading ? (
                   <div className="flex items-center gap-2 text-gray-400">
@@ -154,7 +154,10 @@ export default function Assistant() {
       {/* Input */}
       <form onSubmit={handleSend} className="p-4 bg-white border-t border-gray-200 flex gap-2">
         <input
+          id="assistantInput"
+          name="assistantInput"
           type="text"
+          aria-label={t('ask_placeholder') || 'Type a message...'}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={t('ask_placeholder')}

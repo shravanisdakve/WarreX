@@ -337,8 +337,10 @@ export default function AddProduct() {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 gap-y-5 gap-x-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
+              <label htmlFor="productName" className="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
               <input
+                id="productName"
+                name="productName"
                 type="text"
                 required
                 placeholder="e.g., Samsung Galaxy S24 Ultra"
@@ -349,8 +351,10 @@ export default function AddProduct() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
+              <label htmlFor="brand" className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
               <input
+                id="brand"
+                name="brand"
                 type="text"
                 list="brands"
                 placeholder="Select or type brand"
@@ -364,8 +368,10 @@ export default function AddProduct() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+              <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
               <select
+                id="category"
+                name="category"
                 className="block w-full border border-gray-300 rounded-lg shadow-sm py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-shadow"
                 value={formData.category}
                 onChange={e => setFormData({ ...formData, category: e.target.value })}
@@ -375,8 +381,10 @@ export default function AddProduct() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Purchase Date *</label>
+              <label htmlFor="purchaseDate" className="block text-sm font-medium text-gray-700 mb-1">Purchase Date *</label>
               <input
+                id="purchaseDate"
+                name="purchaseDate"
                 type="date"
                 required
                 className="block w-full border border-gray-300 rounded-lg shadow-sm py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-shadow"
@@ -386,8 +394,10 @@ export default function AddProduct() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Warranty Period *</label>
+              <label htmlFor="warrantyMonths" className="block text-sm font-medium text-gray-700 mb-1">Warranty Period *</label>
               <select
+                id="warrantyMonths"
+                name="warrantyMonths"
                 className="block w-full border border-gray-300 rounded-lg shadow-sm py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-shadow"
                 value={formData.warrantyMonths}
                 onChange={e => setFormData({ ...formData, warrantyMonths: parseInt(e.target.value) })}
@@ -397,8 +407,10 @@ export default function AddProduct() {
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Number</label>
+              <label htmlFor="invoiceNumber" className="block text-sm font-medium text-gray-700 mb-1">Invoice Number</label>
               <input
+                id="invoiceNumber"
+                name="invoiceNumber"
                 type="text"
                 placeholder="e.g., INV-2026-001234"
                 className="block w-full border border-gray-300 rounded-lg shadow-sm py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-shadow"
@@ -408,8 +420,10 @@ export default function AddProduct() {
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+              <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
               <textarea
+                id="notes"
+                name="notes"
                 rows={3}
                 placeholder="Any additional details about the product..."
                 className="block w-full border border-gray-300 rounded-lg shadow-sm py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-shadow"

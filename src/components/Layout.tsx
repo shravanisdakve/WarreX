@@ -51,8 +51,8 @@ export default function Layout() {
                       key={item.path}
                       to={item.path}
                       className={`inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
-                          ? 'bg-indigo-50 text-indigo-700'
-                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                        ? 'bg-indigo-50 text-indigo-700'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                         }`}
                     >
                       <Icon className="w-4 h-4 mr-1.5" />
@@ -68,6 +68,9 @@ export default function Layout() {
               <div className="flex items-center gap-1.5">
                 <Globe className="w-4 h-4 text-gray-400" />
                 <select
+                  id="languageSelect"
+                  name="languageSelect"
+                  aria-label="Select Language"
                   onChange={(e) => changeLanguage(e.target.value)}
                   className="text-sm border-none bg-transparent focus:ring-0 text-gray-600 cursor-pointer pr-6"
                   value={i18n.language}
@@ -112,8 +115,8 @@ export default function Layout() {
                     to={item.path}
                     onClick={() => setMobileMenuOpen(false)}
                     className={`flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive
-                        ? 'bg-indigo-50 text-indigo-700'
-                        : 'text-gray-600 hover:bg-gray-50'
+                      ? 'bg-indigo-50 text-indigo-700'
+                      : 'text-gray-600 hover:bg-gray-50'
                       }`}
                   >
                     <Icon className="w-4 h-4 mr-2" />

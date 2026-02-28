@@ -159,7 +159,10 @@ export default function ProductDetails() {
           <div>
             {editing ? (
               <input
+                id="productName"
+                name="productName"
                 type="text"
+                aria-label="Product Name"
                 value={editData.product_name || ''}
                 onChange={e => setEditData({ ...editData, product_name: e.target.value })}
                 className="text-lg font-semibold text-gray-900 border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 w-full"
@@ -197,8 +200,10 @@ export default function ProductDetails() {
               <div className="px-6 py-4 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Brand</label>
+                    <label htmlFor="brand" className="block text-xs font-medium text-gray-500 mb-1">Brand</label>
                     <input
+                      id="brand"
+                      name="brand"
                       type="text"
                       value={editData.brand || ''}
                       onChange={e => setEditData({ ...editData, brand: e.target.value })}
@@ -206,8 +211,10 @@ export default function ProductDetails() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Category</label>
+                    <label htmlFor="category" className="block text-xs font-medium text-gray-500 mb-1">Category</label>
                     <select
+                      id="category"
+                      name="category"
                       value={editData.category || ''}
                       onChange={e => setEditData({ ...editData, category: e.target.value })}
                       className="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-indigo-500"
@@ -216,8 +223,10 @@ export default function ProductDetails() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Purchase Date</label>
+                    <label htmlFor="purchaseDate" className="block text-xs font-medium text-gray-500 mb-1">Purchase Date</label>
                     <input
+                      id="purchaseDate"
+                      name="purchaseDate"
                       type="date"
                       value={editData.purchase_date || ''}
                       onChange={e => setEditData({ ...editData, purchase_date: e.target.value })}
@@ -225,8 +234,10 @@ export default function ProductDetails() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Warranty (Months)</label>
+                    <label htmlFor="warrantyMonths" className="block text-xs font-medium text-gray-500 mb-1">Warranty (Months)</label>
                     <select
+                      id="warrantyMonths"
+                      name="warrantyMonths"
                       value={editData.warranty_months || 12}
                       onChange={e => setEditData({ ...editData, warranty_months: parseInt(e.target.value) })}
                       className="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-indigo-500"
@@ -236,8 +247,10 @@ export default function ProductDetails() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Invoice Number</label>
+                  <label htmlFor="invoiceNumber" className="block text-xs font-medium text-gray-500 mb-1">Invoice Number</label>
                   <input
+                    id="invoiceNumber"
+                    name="invoiceNumber"
                     type="text"
                     value={editData.invoice_number || ''}
                     onChange={e => setEditData({ ...editData, invoice_number: e.target.value })}
@@ -245,8 +258,10 @@ export default function ProductDetails() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Notes</label>
+                  <label htmlFor="notes" className="block text-xs font-medium text-gray-500 mb-1">Notes</label>
                   <textarea
+                    id="notes"
+                    name="notes"
                     rows={3}
                     value={editData.notes || ''}
                     onChange={e => setEditData({ ...editData, notes: e.target.value })}

@@ -101,7 +101,10 @@ export default function Dashboard() {
           <div className="relative flex-1 sm:flex-none">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
             <input
+              id="search"
+              name="search"
               type="text"
+              aria-label={t('search_placeholder')}
               placeholder={t('search_placeholder')}
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-full sm:w-64 text-sm"
               value={search}
@@ -139,8 +142,10 @@ export default function Dashboard() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Category</label>
+              <label htmlFor="category" className="block text-xs text-gray-500 mb-1">Category</label>
               <select
+                id="category"
+                name="category"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-indigo-500"
@@ -149,8 +154,10 @@ export default function Dashboard() {
               </select>
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Purchased From</label>
+              <label htmlFor="dateFrom" className="block text-xs text-gray-500 mb-1">Purchased From</label>
               <input
+                id="dateFrom"
+                name="dateFrom"
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
@@ -158,8 +165,10 @@ export default function Dashboard() {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Purchased To</label>
+              <label htmlFor="dateTo" className="block text-xs text-gray-500 mb-1">Purchased To</label>
               <input
+                id="dateTo"
+                name="dateTo"
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
