@@ -104,13 +104,6 @@ export default function Login() {
             </p>
           </form>
         </div>
-
-        {/* Demo credentials hint */}
-        <div className="mt-4 text-center">
-          <p className="text-xs text-gray-400">
-            Demo: demo@example.com / password123
-          </p>
-        </div>
       </div>
     </div>
   );

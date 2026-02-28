@@ -109,14 +109,19 @@ export default function AddProduct() {
     if (formData.invoiceNumber && formData.invoiceNumber.trim().length > 2) {
       const checkDupe = async () => {
         try {
-          const res = await axios.get(`/api/products/check-invoice?invoiceNumber=${encodeURIComponent(formData.invoiceNumber.trim())}`);
+          const inv = formData.invoiceNumber.trim();
+          console.log(`[DEBUG] Checking duplicate for: ${inv}`);
+          const res = await axios.get(`/api/products/check-invoice?invoiceNumber=${encodeURIComponent(inv)}`, {
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          });
           if (res.data.exists) {
             setDuplicateWarning(`Warning: This invoice number is already registered for product "${res.data.productName || 'Unknown'}".`);
+            console.log('[DEBUG] Duplicate found!');
           } else {
             setDuplicateWarning(null);
           }
         } catch (e) {
-          // ignore
+          console.error('[DEBUG] Check invoice failed:', e);
         }
       };
       const timeoutId = setTimeout(checkDupe, 500);
@@ -435,14 +440,20 @@ export default function AddProduct() {
                 name="invoiceNumber"
                 type="text"
                 placeholder="e.g., INV-2026-001234"
-                className="block w-full border border-gray-300 rounded-lg shadow-sm py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-shadow"
+                className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 focus:outline-none focus:ring-2 text-sm transition-all ${duplicateWarning
+                  ? 'border-red-500 bg-red-50 focus:ring-red-500 focus:border-red-500'
+                  : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+                  }`}
                 value={formData.invoiceNumber}
                 onChange={e => setFormData({ ...formData, invoiceNumber: e.target.value })}
               />
               {duplicateWarning && (
-                <p className="mt-1.5 text-sm text-amber-600 font-medium flex items-center gap-1 animate-pulse">
-                  <AlertTriangle className="w-4 h-4" /> {duplicateWarning}
-                </p>
+                <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg animate-pulse flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-red-700 font-bold leading-tight">
+                    {duplicateWarning}
+                  </p>
+                </div>
               )}
             </div>
 

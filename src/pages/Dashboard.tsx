@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Search, AlertTriangle, CheckCircle, Clock, Filter, X, ShieldCheck, ShieldAlert, ShieldX, Sparkles, Activity } from 'lucide-react';
+import { Search, AlertTriangle, CheckCircle, Clock, Filter, X, ShieldCheck, ShieldAlert, ShieldX, Sparkles, Activity, Globe } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
 
 interface Product {
@@ -53,7 +53,7 @@ export default function Dashboard() {
     return { label: t('active'), color: 'text-emerald-700 bg-emerald-50 border border-emerald-200', icon: ShieldCheck, dotColor: 'bg-emerald-500' };
   };
 
-  const getRiskScore = (product: Product) => {
+  const getRiskScore = (product: Product, t: any) => {
     const days = differenceInDays(parseISO(product.expiry_date), new Date());
     if (days < 0) return null; // No risk score for expired products
 
@@ -61,21 +61,21 @@ export default function Dashboard() {
 
     if (isHighValueCategory) {
       if (days <= 15) {
-        return { text: "Claim Now, High Value", color: "text-purple-700 bg-purple-50 border-purple-200", icon: Sparkles };
+        return { text: t('risk_claim_now'), color: "text-purple-700 bg-purple-50 border-purple-200 animate-pulse", icon: Sparkles };
       }
       if (days <= 30) {
-        return { text: "High Risk of Failure", color: "text-red-700 bg-red-50 border-red-200", icon: AlertTriangle };
+        return { text: t('risk_high'), color: "text-red-700 bg-red-50 border-red-200 animate-pulse", icon: AlertTriangle };
       }
       if (days <= 90) {
-        return { text: "Moderate Risk", color: "text-amber-700 bg-amber-50 border-amber-200", icon: Activity };
+        return { text: t('risk_moderate'), color: "text-amber-700 bg-amber-50 border-amber-200", icon: Activity };
       }
     } else {
       if (days <= 30) {
-        return { text: "Expiring Soon", color: "text-amber-700 bg-amber-50 border-amber-200", icon: Clock };
+        return { text: t('expiring_soon'), color: "text-amber-700 bg-amber-50 border-amber-200 shadow-sm animate-pulse", icon: Clock };
       }
     }
 
-    return { text: "Low Risk", color: "text-emerald-700 bg-emerald-50 border-emerald-200", icon: CheckCircle };
+    return { text: t('risk_low'), color: "text-emerald-700 bg-emerald-50 border-emerald-200", icon: CheckCircle };
   };
 
   const clearFilters = () => {
@@ -97,25 +97,133 @@ export default function Dashboard() {
   }).length;
   const expiredProducts = products.filter(p => differenceInDays(parseISO(p.expiry_date), new Date()) < 0).length;
 
+  const calculateImpactStats = () => {
+    let score = 70; // Base score
+    let eWaste = 0;
+
+    products.forEach(p => {
+      // E-waste weight heuristics:
+      let weight = 0.5; // Default 0.5kg
+      if (p.category === 'Electronics') weight = 8;
+      if (p.category === 'Appliances') weight = 24;
+      if (p.category === 'Vehicle') weight = 120;
+      if (p.category === 'Furniture') weight = 15;
+
+      const isExpired = differenceInDays(parseISO(p.expiry_date), new Date()) < 0;
+
+      if (!isExpired) {
+        // Active warranties contribute to social impact by promoting repair over discard
+        eWaste += weight;
+        score += 2.5;
+      } else {
+        // Expired items slightly decrease score if not handled
+        score -= 1;
+      }
+    });
+
+    return {
+      score: Math.min(Math.round(score), 100),
+      eWaste: eWaste.toFixed(1),
+      co2: (eWaste * 3.4).toFixed(1)
+    };
+  };
+
+  const impact = calculateImpactStats();
+
   return (
     <div className="space-y-6">
+      {/* Social Impact Score Card */}
+      <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden group">
+        {/* Animated background highlights */}
+        <div className="absolute top-[-20%] right-[-10%] w-64 h-64 bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition-all duration-700"></div>
+        <div className="absolute bottom-[-10%] left-[-5%] w-48 h-48 bg-emerald-400/20 rounded-full blur-2xl group-hover:bg-emerald-400/30 transition-all duration-700"></div>
+
+        <div className="relative z-10">
+          <div className="flex justify-between items-start mb-6">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-white/20 backdrop-blur-md rounded-xl border border-white/20 shadow-lg">
+                <Globe className="w-6 h-6 text-emerald-100 animate-pulse" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold tracking-tight">{t('social_impact')}</h2>
+                <p className="text-emerald-100/70 text-xs font-medium italic">{t('impact_subtitle')}</p>
+              </div>
+            </div>
+
+            {/* Language Toggle Inside Card */}
+            <div className="flex bg-white/10 backdrop-blur-md rounded-lg p-1 border border-white/20">
+              {['en', 'hi', 'mr'].map((lang) => (
+                <button
+                  key={lang}
+                  onClick={() => i18n.changeLanguage(lang)}
+                  className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${i18n.language === lang ? 'bg-white text-emerald-700 shadow-sm' : 'text-white hover:bg-white/10'}`}
+                >
+                  {lang === 'en' ? 'EN' : lang === 'hi' ? 'हि' : 'मर'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+            {/* Score Ring */}
+            <div className="flex items-center gap-6 bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20">
+              <div className="relative flex-shrink-0">
+                <svg className="w-20 h-20 transform -rotate-90">
+                  <circle cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-white/10" />
+                  <circle cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="8" fill="transparent" strokeDasharray={226.19} strokeDashoffset={226.19 * (1 - impact.score / 100)} className="text-emerald-300 transition-all duration-1000 ease-out" />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center font-black text-2xl">{impact.score}</div>
+              </div>
+              <div>
+                <p className="text-emerald-200 text-[10px] font-bold uppercase tracking-widest">{impact.score >= 90 ? t('impact_level_master') : t('impact_level_rising')}</p>
+                <p className="font-bold text-lg leading-tight">{impact.score >= 80 ? t('impact_status_excellent') : t('impact_status_steady')}</p>
+              </div>
+            </div>
+
+            {/* Impact Metrics */}
+            <div className="flex flex-col gap-1 bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 hover:bg-white/15 transition-colors">
+              <span className="text-emerald-200 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 line-clamp-1">
+                <CheckCircle className="w-2.5 h-2.5" /> {t('e_waste')}
+              </span>
+              <div className="flex items-baseline gap-1">
+                <span className="text-3xl font-black">{impact.eWaste}</span>
+                <span className="text-sm font-bold text-emerald-100">kg</span>
+              </div>
+              <p className="text-[10px] text-emerald-100/50 mt-1">{t('impact_e_waste_footer')}</p>
+            </div>
+
+            <div className="flex flex-col gap-1 bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 hover:bg-white/15 transition-colors">
+              <span className="text-emerald-200 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 line-clamp-1">
+                <ShieldCheck className="w-2.5 h-2.5" /> {t('co2_reduced')}
+              </span>
+              <div className="flex items-baseline gap-1">
+                <span className="text-3xl font-black">{impact.co2}</span>
+                <span className="text-sm font-bold text-emerald-100">kg</span>
+              </div>
+              <p className="text-[10px] text-emerald-100/50 mt-1">{t('impact_co2_footer')}</p>
+            </div>
+          </div>
+        </div>
+        <ShieldCheck className="absolute right-4 top-1/2 -translate-y-1/2 w-48 h-48 text-white/5 -rotate-12 pointer-events-none group-hover:scale-110 group-hover:text-white/10 transition-all duration-700" />
+      </div>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
           <p className="text-2xl font-bold text-gray-900">{totalProducts}</p>
-          <p className="text-xs text-gray-500 mt-1">Total Products</p>
+          <p className="text-xs text-gray-500 mt-1">{t('total_products')}</p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-emerald-100 shadow-sm">
           <p className="text-2xl font-bold text-emerald-600">{activeProducts}</p>
-          <p className="text-xs text-gray-500 mt-1">Active</p>
+          <p className="text-xs text-gray-500 mt-1">{t('stats_active')}</p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-amber-100 shadow-sm">
           <p className="text-2xl font-bold text-amber-600">{expiringProducts}</p>
-          <p className="text-xs text-gray-500 mt-1">Expiring Soon</p>
+          <p className="text-xs text-gray-500 mt-1">{t('expiring_soon')}</p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-red-100 shadow-sm">
           <p className="text-2xl font-bold text-red-600">{expiredProducts}</p>
-          <p className="text-xs text-gray-500 mt-1">Expired</p>
+          <p className="text-xs text-gray-500 mt-1">{t('expired')}</p>
         </div>
       </div>
 
@@ -138,10 +246,10 @@ export default function Dashboard() {
           </div>
           <button
             onClick={() => setExpiringSoon(!expiringSoon)}
-            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${expiringSoon ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${expiringSoon ? 'bg-amber-100 text-amber-800 border border-amber-200 animate-pulse' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'}`}
           >
             <Clock className="w-4 h-4 inline mr-1" />
-            Expiring
+            {t('expiring_soon')}
           </button>
           <button
             onClick={() => setShowFilters(!showFilters)}
@@ -231,7 +339,7 @@ export default function Dashboard() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0 ml-4">
-                          <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${status.color}`}>
+                          <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${status.color} ${status.label.includes(t('days_left')) ? 'animate-pulse' : ''}`}>
                             {status.label}
                           </span>
                         </div>
@@ -241,10 +349,10 @@ export default function Dashboard() {
                           <span>Purchased: {format(parseISO(product.purchase_date), 'MMM d, yyyy')}</span>
                           <span>Expires: {format(parseISO(product.expiry_date), 'MMM d, yyyy')}</span>
                         </div>
-                        {getRiskScore(product) && (
-                          <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md border ${getRiskScore(product)!.color}`}>
-                            {React.createElement(getRiskScore(product)!.icon, { className: "w-3 h-3" })}
-                            <span className="font-medium text-[10px] uppercase tracking-wider">{getRiskScore(product)!.text}</span>
+                        {getRiskScore(product, t) && (
+                          <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md border ${getRiskScore(product, t)!.color}`}>
+                            {React.createElement(getRiskScore(product, t)!.icon, { className: "w-3 h-3" })}
+                            <span className="font-medium text-[10px] uppercase tracking-wider">{getRiskScore(product, t)!.text}</span>
                           </div>
                         )}
                       </div>

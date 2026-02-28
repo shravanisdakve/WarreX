@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { Bell, CheckCircle, XCircle, Clock, AlertTriangle, ShieldAlert } from 'lucide-react';
 
@@ -21,6 +22,7 @@ interface UpcomingProduct {
 }
 
 export default function Notifications() {
+  const { t } = useTranslation();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [upcoming, setUpcoming] = useState<UpcomingProduct[]>([]);
   const [activeTab, setActiveTab] = useState<'upcoming' | 'history'>('upcoming');
@@ -56,7 +58,7 @@ export default function Notifications() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
+      <h1 className="text-2xl font-bold text-gray-900">{t('notifications')}</h1>
 
       {/* Tab Switcher */}
       <div className="flex bg-gray-100 rounded-xl p-1 w-fit">
@@ -98,15 +100,15 @@ export default function Notifications() {
                     <Link to={`/product/${product.id}`} className="block px-5 py-4 hover:bg-gray-50/50 transition-colors">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <AlertTriangle className={`w-5 h-5 flex-shrink-0 ${daysLeft <= 7 ? 'text-red-500' : 'text-amber-500'}`} />
+                          <AlertTriangle className={`w-5 h-5 flex-shrink-0 ${daysLeft <= 7 ? 'text-red-500 animate-pulse' : 'text-amber-500 animate-pulse'}`} />
                           <div>
                             <p className="text-sm font-semibold text-gray-900">{product.product_name}</p>
                             <p className="text-xs text-gray-500">{product.brand}</p>
                           </div>
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <p className={`text-sm font-bold ${daysLeft <= 7 ? 'text-red-600' : 'text-amber-600'}`}>
-                            {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
+                          <p className={`text-sm font-bold ${daysLeft <= 7 ? 'text-red-600' : 'text-amber-600'} animate-pulse`}>
+                            {daysLeft} {t('days_left')}
                           </p>
                           <p className="text-xs text-gray-400">
                             Expires {format(parseISO(product.expiry_date), 'MMM d, yyyy')}

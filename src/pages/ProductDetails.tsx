@@ -26,7 +26,7 @@ interface ServiceInfo {
 
 const CATEGORIES = ["Electronics", "Appliances", "Furniture", "Vehicle", "Accessories", "Other"];
 
-const getRiskScore = (product: Product) => {
+const getRiskScore = (product: Product, t: any) => {
   const days = differenceInDays(parseISO(product.expiry_date), new Date());
   if (days < 0) return null; // No risk score for expired products
 
@@ -34,21 +34,21 @@ const getRiskScore = (product: Product) => {
 
   if (isHighValueCategory) {
     if (days <= 15) {
-      return { text: "Claim Now, High Value", color: "text-purple-700 bg-purple-50 border-purple-200", icon: Sparkles };
+      return { text: t('risk_claim_now'), color: "text-purple-700 bg-purple-50 border-purple-200 animate-pulse", icon: Sparkles };
     }
     if (days <= 30) {
-      return { text: "High Risk of Failure", color: "text-red-700 bg-red-50 border-red-200", icon: AlertTriangle };
+      return { text: t('risk_high'), color: "text-red-700 bg-red-50 border-red-200 animate-pulse", icon: AlertTriangle };
     }
     if (days <= 90) {
-      return { text: "Moderate Risk", color: "text-amber-700 bg-amber-50 border-amber-200", icon: Activity };
+      return { text: t('risk_moderate'), color: "text-amber-700 bg-amber-50 border-amber-200", icon: Activity };
     }
   } else {
     if (days <= 30) {
-      return { text: "Expiring Soon", color: "text-amber-700 bg-amber-50 border-amber-200", icon: Clock };
+      return { text: t('expiring_soon'), color: "text-amber-700 bg-amber-50 border-amber-200 shadow-sm animate-pulse", icon: Clock };
     }
   }
 
-  return { text: "Low Risk", color: "text-emerald-700 bg-emerald-50 border-emerald-200", icon: CheckCircle };
+  return { text: t('risk_low'), color: "text-emerald-700 bg-emerald-50 border-emerald-200", icon: CheckCircle };
 };
 
 export default function ProductDetails() {
@@ -116,7 +116,13 @@ export default function ProductDetails() {
     setGeneratingClaim(true);
     try {
       const res = await axios.post('/api/assistant', {
-        message: `Draft a professional complaint email to claim warranty for my ${product!.product_name}. Please do not output any markdown code blocks, just plain text. Provide the subject and the body clearly.`
+        message: `[DRAFT_EMAIL] Draft a HIGHLY PROFESSIONAL and FORMAL complaint email for my ${product!.product_name}.
+        Product Metadata:
+        - Brand: ${product!.brand}
+        - Purchase Date: ${product!.purchase_date}
+        - Expiry Date: ${product!.expiry_date}
+        - Invoice: ${product!.invoice_number}
+        Help me write a formal subject and body.`
       });
       setClaimDraft(res.data.response);
     } catch (error) {
@@ -214,10 +220,10 @@ export default function ProductDetails() {
             <p className="mt-1 text-sm text-gray-500">{product.category} • {product.brand}</p>
           </div>
           <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
-            {getRiskScore(product) && (
-              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${getRiskScore(product)!.color}`}>
-                {React.createElement(getRiskScore(product)!.icon, { className: "w-4 h-4" })}
-                <span className="text-sm font-semibold">{getRiskScore(product)!.text}</span>
+            {getRiskScore(product, t) && (
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${getRiskScore(product, t)!.color}`}>
+                {React.createElement(getRiskScore(product, t)!.icon, { className: "w-4 h-4" })}
+                <span className="text-sm font-semibold">{getRiskScore(product, t)!.text}</span>
               </div>
             )}
             <div className={`flex items-center gap-2 px-4 py-2 rounded-full border ${statusColor}`}>
