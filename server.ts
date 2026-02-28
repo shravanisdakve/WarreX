@@ -76,31 +76,38 @@ db.exec(`
 
 const app = express();
 const PORT = 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-change-in-prod';
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-change-in-prod-must-be-env-in-real-prod';
 
 // ── Security Middleware ──────────────────────────────────────────────
-// Helmet sets various HTTP security headers
+// Set UTF-8 encoding for all responses to prevent garbled Hindi/Marathi text
+app.use((req, res, next) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  next();
+});
+
+// Helmet handles various security headers
 app.use(helmet({
-  contentSecurityPolicy: false, // Disabled for Vite dev HMR
+  contentSecurityPolicy: false, // Vite dev needs this disabled for HMR
   crossOriginEmbedderPolicy: false,
 }));
 
-// CORS – restrict to app origin
+// CORS – strictly lock to the application origin for real-product security
 const allowedOrigins = [
   'http://localhost:3000',
-  process.env.APP_URL || ''
+  process.env.APP_URL || 'http://localhost:3000'
 ].filter(Boolean);
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (server-to-server, Postman, etc.)
+    // Lock to localhost:3000 as requested for production-grade security
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(null, true); // In dev, allow all; tighten in prod
+      console.warn(`[SECURITY] Blocked cross-origin request from: ${origin}`);
+      callback(new Error('Cross-Origin Request Blocked by Warrify Security Policy'));
     }
   },
-  credentials: true,
+  credentials: true
 }));
 
 app.use(express.json({ limit: '5mb' }));
@@ -174,22 +181,29 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
   }
 });
 
-// ── Product Routes ───────────────────────────────────────────────────
-// Check invoice number for duplicates (Global check for demo purposes)
-app.get('/api/products/check-invoice', (req: any, res) => {
+// Rate limiter for duplicate checks (Prevents brute force discovery)
+const dupeCheckLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 20,
+  message: { error: "Too many checks. Please wait." }
+});
+
+// Check invoice number for duplicates (Public for demo, but rate-limited)
+app.get('/api/products/check-invoice', dupeCheckLimiter, (req: any, res) => {
   try {
     const { invoiceNumber } = req.query;
     console.log(`[DUPE_CHECK] Checking: ${invoiceNumber}`);
     if (!invoiceNumber) return res.json({ exists: false });
 
-    const stmt = db.prepare('SELECT id, product_name FROM products WHERE invoice_number = ? LIMIT 1');
-    const existing = stmt.get(invoiceNumber) as any;
+    const stmt = db.prepare('SELECT id, product_name FROM products WHERE TRIM(invoice_number) = ? OR invoice_number = ? LIMIT 1');
+    const invTrim = invoiceNumber.trim();
+    const existing = stmt.get(invTrim, invoiceNumber) as any;
 
     if (existing) {
-      console.log(`[DUPE_CHECK] Found duplicate: ${existing.product_name}`);
+      console.log(`[DUPE_CHECK] Found duplicate: ${existing.product_name.trim()}`);
     }
 
-    res.json({ exists: !!existing, productName: existing?.product_name });
+    res.json({ exists: !!existing, productName: existing?.product_name?.trim() || 'Unknown' });
   } catch (error) {
     console.error('[DUPE_CHECK] Error:', error);
     res.status(500).json({ error: 'Server error' });
@@ -475,10 +489,21 @@ function generateFallbackResponse(query: string, products: any[], userName: stri
 
   // 1. Complaint email (TOP PRIORITY)
   if (q.includes('draft_email') || q.includes('complaint') || q.includes('claim')) {
-    const product = products.find(p =>
-      q.includes(p.product_name.toLowerCase()) ||
-      (p.brand && q.includes(p.brand.toLowerCase()))
-    ) || products[0];
+    // Priority 1: Match by Invoice Number (Most specific)
+    let product = products.find(p => p.invoice_number && q.includes(p.invoice_number.toLowerCase()));
+
+    // Priority 2: Exact product name match
+    if (!product) {
+      product = products.find(p => q.includes(p.product_name.toLowerCase()));
+    }
+
+    // Priority 3: Brand match
+    if (!product) {
+      product = products.find(p => p.brand && q.includes(p.brand.toLowerCase()));
+    }
+
+    // Priority 4: Fallback to the first available product
+    if (!product) product = products[0];
     if (product) {
       return `Subject: Warranty Service Request – ${product.product_name}${product.invoice_number ? ' (Inv: ' + product.invoice_number + ')' : ''}
 

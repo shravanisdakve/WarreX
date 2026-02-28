@@ -116,7 +116,7 @@ export default function ProductDetails() {
     setGeneratingClaim(true);
     try {
       const res = await axios.post('/api/assistant', {
-        message: `draft_email: Draft a professional complaint email for my ${product!.product_name}. Brand: ${product!.brand}, Invoice: ${product!.invoice_number}, Bought: ${product!.purchase_date}`
+        message: `draft_email: invoice ${product!.invoice_number || 'N/A'}. Draft a professional complaint email for my ${product!.product_name}. Brand: ${product!.brand}, Bought: ${product!.purchase_date}`
       });
       setClaimDraft(res.data.response);
     } catch (error) {

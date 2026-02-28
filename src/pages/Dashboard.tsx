@@ -139,7 +139,7 @@ export default function Dashboard() {
         <div className="absolute bottom-[-10%] left-[-5%] w-48 h-48 bg-emerald-400/20 rounded-full blur-2xl group-hover:bg-emerald-400/30 transition-all duration-700"></div>
 
         <div className="relative z-10">
-          <div className="flex justify-between items-start mb-6">
+          <div className="flex flex-wrap md:flex-nowrap justify-between items-start gap-y-4 mb-6">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-white/20 backdrop-blur-md rounded-xl border border-white/20 shadow-lg">
                 <Globe className="w-6 h-6 text-emerald-100 animate-pulse" />
@@ -151,12 +151,12 @@ export default function Dashboard() {
             </div>
 
             {/* Language Toggle Inside Card */}
-            <div className="flex bg-white/10 backdrop-blur-md rounded-lg p-1 border border-white/20">
+            <div className="flex bg-white/10 backdrop-blur-md rounded-lg p-1 border border-white/20 shadow-sm ml-auto sm:ml-0">
               {['en', 'hi', 'mr'].map((lang) => (
                 <button
                   key={lang}
                   onClick={() => i18n.changeLanguage(lang)}
-                  className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${i18n.language === lang ? 'bg-white text-emerald-700 shadow-sm' : 'text-white hover:bg-white/10'}`}
+                  className={`px-3 py-1 text-[10px] sm:text-xs font-bold rounded-md transition-all ${i18n.language === lang ? 'bg-white text-emerald-700 shadow-sm' : 'text-white hover:bg-white/10'}`}
                 >
                   {lang === 'en' ? 'EN' : lang === 'hi' ? 'हि' : 'मर'}
                 </button>

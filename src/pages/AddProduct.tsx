@@ -136,9 +136,13 @@ export default function AddProduct() {
       const file = e.target.files[0];
 
       // Validate file type
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp', 'application/pdf'];
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp'];
       if (!allowedTypes.includes(file.type)) {
-        alert('Please upload an image (JPEG, PNG, WebP, GIF, BMP) or PDF file.');
+        if (file.type === 'application/pdf') {
+          alert('PDF support is coming in the next update! For now, please use an image format (JPEG/PNG) to enable AI detection.');
+        } else {
+          alert('Invalid file format. Please upload an image.');
+        }
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
@@ -314,9 +318,13 @@ export default function AddProduct() {
             <label htmlFor="file-upload" className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">
               <Sparkles className="w-4 h-4" />
               <span>{t('upload_invoice')}</span>
-              <input id="file-upload" name="file-upload" type="file" className="sr-only" ref={fileInputRef} onChange={handleFileChange} accept="image/*,.pdf" />
+              <input id="file-upload" name="file-upload" type="file" className="sr-only" ref={fileInputRef} onChange={handleFileChange} accept="image/*" />
             </label>
-            <p className="mt-2 text-xs text-gray-500">Upload an invoice image to auto-fill details via OCR</p>
+            <p className="mt-2 text-xs text-gray-500">Supported: JPEG, PNG, WebP (Max 5MB)</p>
+            <div className="mt-2 flex items-center justify-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-100 shadow-sm transition-all hover:bg-indigo-100 group w-fit mx-auto cursor-help">
+              <Sparkles className="w-3.5 h-3.5 animate-pulse text-indigo-500 group-hover:scale-110" />
+              <span className="text-[10px] font-bold tracking-tight uppercase italic opacity-90 group-hover:opacity-100">PDF OCR Beta Support Coming Soon</span>
+            </div>
           </div>
 
           {/* Preview */}
