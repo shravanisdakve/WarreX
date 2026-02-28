@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Search, AlertTriangle, CheckCircle, Clock, Filter, X, ShieldCheck, ShieldAlert, ShieldX } from 'lucide-react';
+import { Search, AlertTriangle, CheckCircle, Clock, Filter, X, ShieldCheck, ShieldAlert, ShieldX, Sparkles, Activity } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
 
 interface Product {
@@ -24,7 +24,7 @@ export default function Dashboard() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   useEffect(() => {
     fetchProducts();
@@ -51,6 +51,31 @@ export default function Dashboard() {
     if (days < 0) return { label: t('expired'), color: 'text-red-700 bg-red-50 border border-red-200', icon: ShieldX, dotColor: 'bg-red-500' };
     if (days <= 30) return { label: `${days} ${t('days_left')}`, color: 'text-amber-700 bg-amber-50 border border-amber-200', icon: ShieldAlert, dotColor: 'bg-amber-500' };
     return { label: t('active'), color: 'text-emerald-700 bg-emerald-50 border border-emerald-200', icon: ShieldCheck, dotColor: 'bg-emerald-500' };
+  };
+
+  const getRiskScore = (product: Product) => {
+    const days = differenceInDays(parseISO(product.expiry_date), new Date());
+    if (days < 0) return null; // No risk score for expired products
+
+    const isHighValueCategory = ["Electronics", "Appliances", "Vehicle"].includes(product.category);
+
+    if (isHighValueCategory) {
+      if (days <= 15) {
+        return { text: "Claim Now, High Value", color: "text-purple-700 bg-purple-50 border-purple-200", icon: Sparkles };
+      }
+      if (days <= 30) {
+        return { text: "High Risk of Failure", color: "text-red-700 bg-red-50 border-red-200", icon: AlertTriangle };
+      }
+      if (days <= 90) {
+        return { text: "Moderate Risk", color: "text-amber-700 bg-amber-50 border-amber-200", icon: Activity };
+      }
+    } else {
+      if (days <= 30) {
+        return { text: "Expiring Soon", color: "text-amber-700 bg-amber-50 border-amber-200", icon: Clock };
+      }
+    }
+
+    return { text: "Low Risk", color: "text-emerald-700 bg-emerald-50 border-emerald-200", icon: CheckCircle };
   };
 
   const clearFilters = () => {
@@ -211,9 +236,17 @@ export default function Dashboard() {
                           </span>
                         </div>
                       </div>
-                      <div className="mt-2 flex justify-between text-xs text-gray-400 pl-5">
-                        <span>Purchased: {format(parseISO(product.purchase_date), 'MMM d, yyyy')}</span>
-                        <span>Expires: {format(parseISO(product.expiry_date), 'MMM d, yyyy')}</span>
+                      <div className="mt-2 flex justify-between items-center text-xs text-gray-400 pl-5">
+                        <div className="flex gap-4">
+                          <span>Purchased: {format(parseISO(product.purchase_date), 'MMM d, yyyy')}</span>
+                          <span>Expires: {format(parseISO(product.expiry_date), 'MMM d, yyyy')}</span>
+                        </div>
+                        {getRiskScore(product) && (
+                          <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md border ${getRiskScore(product)!.color}`}>
+                            {React.createElement(getRiskScore(product)!.icon, { className: "w-3 h-3" })}
+                            <span className="font-medium text-[10px] uppercase tracking-wider">{getRiskScore(product)!.text}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </Link>

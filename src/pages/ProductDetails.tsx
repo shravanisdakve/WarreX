@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
-import { Calendar, FileText, Phone, Mail, Globe, Bell, Trash2, Edit2, Save, X, ShieldCheck, ShieldAlert, ShieldX, ArrowLeft } from 'lucide-react';
+import { Calendar, FileText, Phone, Mail, Globe, Bell, Trash2, Edit2, Save, X, ShieldCheck, ShieldAlert, ShieldX, ArrowLeft, Wand2, Sparkles, AlertTriangle, Activity, Clock, CheckCircle } from 'lucide-react';
 import { format, parseISO, differenceInDays, addMonths } from 'date-fns';
 
 interface Product {
@@ -26,6 +26,31 @@ interface ServiceInfo {
 
 const CATEGORIES = ["Electronics", "Appliances", "Furniture", "Vehicle", "Accessories", "Other"];
 
+const getRiskScore = (product: Product) => {
+  const days = differenceInDays(parseISO(product.expiry_date), new Date());
+  if (days < 0) return null; // No risk score for expired products
+
+  const isHighValueCategory = ["Electronics", "Appliances", "Vehicle"].includes(product.category);
+
+  if (isHighValueCategory) {
+    if (days <= 15) {
+      return { text: "Claim Now, High Value", color: "text-purple-700 bg-purple-50 border-purple-200", icon: Sparkles };
+    }
+    if (days <= 30) {
+      return { text: "High Risk of Failure", color: "text-red-700 bg-red-50 border-red-200", icon: AlertTriangle };
+    }
+    if (days <= 90) {
+      return { text: "Moderate Risk", color: "text-amber-700 bg-amber-50 border-amber-200", icon: Activity };
+    }
+  } else {
+    if (days <= 30) {
+      return { text: "Expiring Soon", color: "text-amber-700 bg-amber-50 border-amber-200", icon: Clock };
+    }
+  }
+
+  return { text: "Low Risk", color: "text-emerald-700 bg-emerald-50 border-emerald-200", icon: CheckCircle };
+};
+
 export default function ProductDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -36,6 +61,8 @@ export default function ProductDetails() {
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState<Partial<Product>>({});
   const [saving, setSaving] = useState(false);
+  const [claimDraft, setClaimDraft] = useState<string | null>(null);
+  const [generatingClaim, setGeneratingClaim] = useState(false);
 
   useEffect(() => {
     fetchProduct();
@@ -82,6 +109,20 @@ export default function ProductDetails() {
       alert('Test reminder sent! Check your email (or console logs in demo mode).');
     } catch (error) {
       alert('Failed to send reminder');
+    }
+  };
+
+  const handleGenerateClaim = async () => {
+    setGeneratingClaim(true);
+    try {
+      const res = await axios.post('/api/assistant', {
+        message: `Draft a professional complaint email to claim warranty for my ${product!.product_name}. Please do not output any markdown code blocks, just plain text. Provide the subject and the body clearly.`
+      });
+      setClaimDraft(res.data.response);
+    } catch (error) {
+      alert('Failed to generate claim draft');
+    } finally {
+      setGeneratingClaim(false);
     }
   };
 
@@ -172,9 +213,17 @@ export default function ProductDetails() {
             )}
             <p className="mt-1 text-sm text-gray-500">{product.category} • {product.brand}</p>
           </div>
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-full border ${statusColor}`}>
-            <StatusIcon className="w-4 h-4" />
-            <span className="text-sm font-semibold">{statusText}</span>
+          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+            {getRiskScore(product) && (
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${getRiskScore(product)!.color}`}>
+                {React.createElement(getRiskScore(product)!.icon, { className: "w-4 h-4" })}
+                <span className="text-sm font-semibold">{getRiskScore(product)!.text}</span>
+              </div>
+            )}
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-full border ${statusColor}`}>
+              <StatusIcon className="w-4 h-4" />
+              <span className="text-sm font-semibold">{statusText}</span>
+            </div>
           </div>
         </div>
 
@@ -316,6 +365,10 @@ export default function ProductDetails() {
               <Bell className="w-4 h-4 mr-2 text-amber-500" /> Test Reminder
             </button>
 
+            <button onClick={handleGenerateClaim} disabled={generatingClaim} className="inline-flex items-center px-4 py-2 border border-gray-200 shadow-sm text-sm font-medium rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors disabled:opacity-50">
+              <Wand2 className="w-4 h-4 mr-2" /> {generatingClaim ? 'Generating...' : 'Generate Claim Email'}
+            </button>
+
             {editing ? (
               <>
                 <button onClick={handleSave} disabled={saving} className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50">
@@ -336,6 +389,35 @@ export default function ProductDetails() {
             </button>
           </div>
         </div>
+        {claimDraft && (
+          <div className="px-6 py-5 border-t border-gray-100 bg-indigo-50/30">
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <Wand2 className="w-5 h-5 text-indigo-600" /> AI Generated Claim Draft
+              </h4>
+              <button onClick={() => setClaimDraft(null)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="bg-white border text-sm text-gray-800 border-gray-200 rounded-xl p-4 whitespace-pre-wrap max-h-96 overflow-y-auto font-medium">
+              {claimDraft}
+            </div>
+            <div className="mt-4 flex gap-3">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(claimDraft);
+                  alert('Copied to clipboard!');
+                }}
+                className="inline-flex items-center px-4 py-2 border border-gray-200 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+              >
+                Copy to Clipboard
+              </button>
+              {serviceInfo?.email && (
+                <ActionButton href={`mailto:${serviceInfo.email}?subject=Warranty Claim - ${product.product_name}&body=${encodeURIComponent(claimDraft)}`} icon={<Mail className="w-4 h-4 text-blue-600" />} label="Send Email" />
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

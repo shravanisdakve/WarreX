@@ -1,9 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Tesseract from 'tesseract.js';
 import { useTranslation } from 'react-i18next';
-import { Upload, Save, Loader, Sparkles, FileText, X } from 'lucide-react';
+import { Upload, Save, Loader, Sparkles, FileText, X, AlertTriangle } from 'lucide-react';
 import { addMonths, format, parse, isValid } from 'date-fns';
 
 const BRANDS = ["Samsung", "LG", "Sony", "Apple", "HP", "Dell", "Lenovo", "Whirlpool", "Bosch", "OnePlus", "Xiaomi", "Realme", "Panasonic", "Godrej", "Voltas", "Haier", "Asus", "Acer"];
@@ -103,6 +103,28 @@ export default function AddProduct() {
   const [ocrHighlights, setOcrHighlights] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (formData.invoiceNumber && formData.invoiceNumber.trim().length > 2) {
+      const checkDupe = async () => {
+        try {
+          const res = await axios.get(`/api/products/check-invoice?invoiceNumber=${encodeURIComponent(formData.invoiceNumber.trim())}`);
+          if (res.data.exists) {
+            setDuplicateWarning(`Warning: This invoice number is already registered for product "${res.data.productName || 'Unknown'}".`);
+          } else {
+            setDuplicateWarning(null);
+          }
+        } catch (e) {
+          // ignore
+        }
+      };
+      const timeoutId = setTimeout(checkDupe, 500);
+      return () => clearTimeout(timeoutId);
+    } else {
+      setDuplicateWarning(null);
+    }
+  }, [formData.invoiceNumber]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -417,6 +439,11 @@ export default function AddProduct() {
                 value={formData.invoiceNumber}
                 onChange={e => setFormData({ ...formData, invoiceNumber: e.target.value })}
               />
+              {duplicateWarning && (
+                <p className="mt-1.5 text-sm text-amber-600 font-medium flex items-center gap-1 animate-pulse">
+                  <AlertTriangle className="w-4 h-4" /> {duplicateWarning}
+                </p>
+              )}
             </div>
 
             <div className="sm:col-span-2">

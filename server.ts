@@ -175,6 +175,18 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 });
 
 // ── Product Routes ───────────────────────────────────────────────────
+app.get('/api/products/check-invoice', authenticateToken, (req: any, res) => {
+  try {
+    const { invoiceNumber } = req.query;
+    if (!invoiceNumber) return res.json({ exists: false });
+    const stmt = db.prepare('SELECT id, product_name FROM products WHERE user_id = ? AND invoice_number = ? LIMIT 1');
+    const existing = stmt.get(req.user.id, invoiceNumber) as any;
+    res.json({ exists: !!existing, productName: existing?.product_name });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 app.get('/api/products', authenticateToken, (req: any, res) => {
   try {
     const { search, expiringSoon, dateFrom, dateTo, category } = req.query;

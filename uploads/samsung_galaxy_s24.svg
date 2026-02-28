@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" style="background-color: white; font-family: monospace;">
+  <rect width="100%" height="100%" fill="#ffffff" />
+  
+  <text x="50" y="80" font-size="36" font-weight="bold" fill="#333">Samsung Store</text>
+  <text x="50" y="120" font-size="20" fill="#666">123 Tech Avenue, Silicon Valley</text>
+  <text x="50" y="150" font-size="20" fill="#666">Phone: 1800-555-0199</text>
+  
+  <line x1="50" y1="180" x2="750" y2="180" stroke="#ccc" stroke-width="2" />
+  
+  <text x="50" y="240" font-size="28" font-weight="bold">TAX INVOICE</text>
+  
+  <text x="50" y="300" font-size="22">Date: 15 Jan 2025</text>
+  <text x="50" y="340" font-size="22">Invoice No: SAM-2025-001452</text>
+  <text x="50" y="380" font-size="22">Customer: Demo User</text>
+  
+  <rect x="50" y="420" width="700" height="50" fill="#f5f5f5" />
+  <text x="70" y="455" font-size="20" font-weight="bold">Item Description</text>
+  <text x="600" y="455" font-size="20" font-weight="bold">Amount</text>
+  
+  <text x="70" y="520" font-size="20">1x Samsung Galaxy S24 Ultra</text>
+  <text x="600" y="520" font-size="20">$1199.00</text>
+  
+  <line x1="50" y1="560" x2="750" y2="560" stroke="#ccc" stroke-width="1" />
+  
+  <text x="450" y="610" font-size="20">Subtotal:</text>
+  <text x="600" y="610" font-size="20">$1199.00</text>
+  
+  <text x="450" y="650" font-size="20">Tax (18%):</text>
+  <text x="600" y="650" font-size="20">Included</text>
+  
+  <line x1="450" y1="670" x2="750" y2="670" stroke="#333" stroke-width="2" />
+  
+  <text x="450" y="710" font-size="24" font-weight="bold">Total:</text>
+  <text x="600" y="710" font-size="24" font-weight="bold">$1199.00</text>
+  
+  <text x="50" y="850" font-size="18" fill="#888">Thank you for shopping with Samsung!</text>
+  <text x="50" y="880" font-size="16" fill="#888">This is a computer generated invoice and does not require a signature.</text>
+  <text x="50" y="910" font-size="16" fill="#888">Valid for warranty claims.</text>
+</svg>
