@@ -94,6 +94,7 @@ export default function AddProduct() {
     purchaseDate: format(new Date(), 'yyyy-MM-dd'),
     warrantyMonths: 12,
     invoiceNumber: '',
+    purchasePrice: '',
     notes: ''
   });
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
@@ -208,6 +209,7 @@ export default function AddProduct() {
     let detectedDate = '';
     let detectedInvoiceNo = '';
     let detectedProductName = '';
+    let detectedPrice = '';
 
     // Detect Brand
     for (const brand of BRANDS) {
@@ -262,6 +264,20 @@ export default function AddProduct() {
       highlights.push(`📦 Product detected: ${detectedProductName}`);
     }
 
+    // Detect Price (e.g., "Total: 12,000", "Amount: 2500", "₹ 45000", "Price: 500")
+    const pricePatterns = [
+      /(?:Total|Amount|Price|Paid|Value)\s*(?:[:.\-]?|Amt\.?|Sum)?\s*(?:Rs\.?|INR|₹)?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/i,
+      /(?:Rs\.?|INR|₹)\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/
+    ];
+    for (const pattern of pricePatterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        detectedPrice = match[1].replace(/,/g, '');
+        highlights.push(`💰 Price detected: ₹${detectedPrice}`);
+        break;
+      }
+    }
+
     setOcrHighlights(highlights);
 
     setFormData(prev => ({
@@ -269,7 +285,8 @@ export default function AddProduct() {
       productName: detectedProductName || prev.productName,
       brand: detectedBrand || prev.brand,
       purchaseDate: detectedDate || prev.purchaseDate,
-      invoiceNumber: detectedInvoiceNo || prev.invoiceNumber
+      invoiceNumber: detectedInvoiceNo || prev.invoiceNumber,
+      purchasePrice: detectedPrice || prev.purchasePrice
     }));
   };
 
@@ -292,6 +309,7 @@ export default function AddProduct() {
 
       await axios.post('/api/products', {
         ...formData,
+        purchasePrice: formData.purchasePrice ? parseFloat(formData.purchasePrice) : 0,
         expiryDate,
         invoiceFileUrl,
         invoiceText
@@ -320,11 +338,7 @@ export default function AddProduct() {
               <span>{t('upload_invoice')}</span>
               <input id="file-upload" name="file-upload" type="file" className="sr-only" ref={fileInputRef} onChange={handleFileChange} accept="image/*" />
             </label>
-            <p className="mt-2 text-xs text-gray-500">Supported: JPEG, PNG, WebP (Max 5MB)</p>
-            <div className="mt-2 flex items-center justify-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-100 shadow-sm transition-all hover:bg-indigo-100 group w-fit mx-auto cursor-help">
-              <Sparkles className="w-3.5 h-3.5 animate-pulse text-indigo-500 group-hover:scale-110" />
-              <span className="text-[10px] font-bold tracking-tight uppercase italic opacity-90 group-hover:opacity-100">PDF OCR Beta Support Coming Soon</span>
-            </div>
+            <p className="mt-2 text-xs text-gray-500">Supported: JPEG, PNG, WebP (Max 5MB) • AI-powered text extraction</p>
           </div>
 
           {/* Preview */}
@@ -463,6 +477,19 @@ export default function AddProduct() {
                   </p>
                 </div>
               )}
+            </div>
+
+            <div>
+              <label htmlFor="purchasePrice" className="block text-sm font-medium text-gray-700 mb-1">Purchase Price (₹)</label>
+              <input
+                id="purchasePrice"
+                name="purchasePrice"
+                type="number"
+                placeholder="e.g., 25000"
+                className="block w-full border border-gray-300 rounded-lg shadow-sm py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-shadow"
+                value={formData.purchasePrice}
+                onChange={e => setFormData({ ...formData, purchasePrice: e.target.value })}
+              />
             </div>
 
             <div className="sm:col-span-2">
