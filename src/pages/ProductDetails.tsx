@@ -215,20 +215,20 @@ export default function ProductDetails() {
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Skeleton loading */}
       <div className="animate-pulse space-y-4">
-        <div className="h-4 bg-gray-200 rounded w-32" />
-        <div className="bg-white rounded-2xl p-6 space-y-4">
+        <div className="h-4 bg-slate-800/50 rounded w-32" />
+        <div className="bg-[#151c2e] rounded-2xl p-6 space-y-4">
           <div className="flex justify-between">
             <div className="space-y-2">
-              <div className="h-6 bg-gray-200 rounded w-48" />
-              <div className="h-4 bg-gray-200 rounded w-32" />
+              <div className="h-6 bg-slate-800 rounded w-48" />
+              <div className="h-4 bg-slate-800 rounded w-32" />
             </div>
-            <div className="h-8 bg-gray-200 rounded-full w-24" />
+            <div className="h-8 bg-slate-800 rounded-full w-24" />
           </div>
-          <div className="h-3 bg-gray-200 rounded" />
+          <div className="h-3 bg-slate-800 rounded" />
           <div className="space-y-3 mt-4">
-            <div className="h-12 bg-gray-100 rounded" />
-            <div className="h-12 bg-gray-100 rounded" />
-            <div className="h-12 bg-gray-100 rounded" />
+            <div className="h-12 bg-slate-800/50 rounded" />
+            <div className="h-12 bg-slate-800/50 rounded" />
+            <div className="h-12 bg-slate-800/50 rounded" />
           </div>
         </div>
       </div>
@@ -237,9 +237,9 @@ export default function ProductDetails() {
 
   if (!product) return (
     <div className="text-center py-20">
-      <ShieldX className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-      <p className="text-gray-500">Product not found</p>
-      <button onClick={() => navigate('/dashboard')} className="mt-3 text-indigo-600 hover:underline text-sm">
+      <ShieldX className="w-12 h-12 mx-auto text-slate-700 mb-3" />
+      <p className="text-slate-500">Product not found</p>
+      <button onClick={() => navigate('/dashboard')} className="mt-3 text-indigo-400 hover:underline text-sm">
         Back to Dashboard
       </button>
     </div>
@@ -250,7 +250,7 @@ export default function ProductDetails() {
   const isExpiringSoon = !isExpired && daysLeft <= 30;
 
   const StatusIcon = isExpired ? ShieldX : isExpiringSoon ? ShieldAlert : ShieldCheck;
-  const statusColor = isExpired ? 'text-red-700 bg-red-50 border-red-200' : isExpiringSoon ? 'text-amber-700 bg-amber-50 border-amber-200' : 'text-emerald-700 bg-emerald-50 border-emerald-200';
+  const statusColor = isExpired ? 'text-red-400 bg-red-500/10 border-red-500/20' : isExpiringSoon ? 'text-amber-400 bg-amber-500/10 border-amber-500/20' : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
   const statusText = isExpired ? `Expired ${Math.abs(daysLeft)} days ago` : `${daysLeft} Days Left`;
 
   const totalDays = differenceInDays(parseISO(product.expiry_date), parseISO(product.purchase_date));
@@ -267,16 +267,16 @@ export default function ProductDetails() {
     >
       <button
         onClick={() => navigate('/dashboard')}
-        className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-indigo-600 transition-all hover:-translate-x-1"
+        className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-indigo-400 transition-all hover:-translate-x-1 btn-tactile"
       >
         <ArrowLeft className="w-4 h-4 mr-1" /> Back to Dashboard
       </button>
 
       {/* Header Card */}
-      <div className="bg-white/80 backdrop-blur-xl shadow-md rounded-2xl border border-gray-200/60 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+      <div className="bg-[#151c2e]/80 backdrop-blur-xl shadow-md rounded-2xl border border-indigo-500/10 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 card-interactive">
         <div className="px-6 py-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-2xl">
+            <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-2xl">
               {BRAND_LOGOS[product.brand] || '📦'}
             </div>
             <div>
@@ -285,12 +285,12 @@ export default function ProductDetails() {
                   id="productName" name="productName" type="text" aria-label="Product Name"
                   value={editData.product_name || ''}
                   onChange={e => setEditData({ ...editData, product_name: e.target.value })}
-                  className="text-lg font-semibold text-gray-900 border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 w-full"
+                  className="text-lg font-semibold text-slate-200 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-500/50 w-full"
                 />
               ) : (
-                <h3 className="text-xl font-bold text-gray-900">{product.product_name}</h3>
+                <h3 className="text-xl font-bold text-slate-100">{product.product_name}</h3>
               )}
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-slate-500">
                 {product.category} • {product.brand}
                 {product.purchase_price > 0 && <span className="text-indigo-500 ml-1">• ₹{product.purchase_price.toLocaleString('en-IN')}</span>}
               </p>
@@ -306,77 +306,77 @@ export default function ProductDetails() {
 
         {/* Warranty Progress */}
         <div className="px-6 pb-5">
-          <div className="flex justify-between text-xs text-gray-500 mb-1">
+          <div className="flex justify-between text-xs text-slate-500 mb-1">
             <span>Purchase: {format(parseISO(product.purchase_date), 'MMM d, yyyy')}</span>
             <span>Expiry: {format(parseISO(product.expiry_date), 'MMM d, yyyy')}</span>
           </div>
-          <div className="w-full bg-gray-100 rounded-full h-2.5 relative">
+          <div className="w-full bg-white/10 rounded-full h-2.5 relative">
             <div
               className={`h-2.5 rounded-full transition-all duration-500 ${isExpired ? 'bg-red-500' : isExpiringSoon ? 'bg-amber-500' : 'bg-emerald-500'}`}
               style={{ width: `${progress}%` }}
             ></div>
           </div>
-          <p className="text-xs text-gray-400 mt-1 text-center">
+          <p className="text-xs text-slate-500 mt-1 text-center">
             {product.warranty_months} months warranty • <span className="font-semibold">{Math.round(progress)}% elapsed</span>
           </p>
         </div>
 
         {/* Claim Status Tracker */}
-        <div className="px-6 pb-4 border-t border-gray-100 pt-4">
+        <div className="px-6 pb-4 border-t border-white/5 pt-4">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Claim Status</label>
+            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Claim Status</label>
             <select
               value={claimStatus}
               onChange={(e) => handleClaimStatusUpdate(e.target.value)}
-              className={`border rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${claimStatus === 'SUCCESSFUL' ? 'border-emerald-300 bg-emerald-50 text-emerald-700' :
-                claimStatus === 'REJECTED' ? 'border-red-300 bg-red-50 text-red-700' :
-                  claimStatus === 'PENDING' ? 'border-amber-300 bg-amber-50 text-amber-700' :
-                    'border-gray-300 bg-white text-gray-600'
+              className={`border rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${claimStatus === 'SUCCESSFUL' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' :
+                claimStatus === 'REJECTED' ? 'border-red-500/30 bg-red-500/10 text-red-400' :
+                  claimStatus === 'PENDING' ? 'border-amber-500/30 bg-amber-500/10 text-amber-400' :
+                    'border-white/10 bg-white/5 text-slate-400'
                 }`}
             >
-              {CLAIM_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+              {CLAIM_STATUSES.map(s => <option key={s.value} value={s.value} className="bg-[#151c2e]">{s.label}</option>)}
             </select>
           </div>
         </div>
 
         {/* Details */}
-        <div className="border-t border-gray-100">
-          <dl className="divide-y divide-gray-100">
+        <div className="border-t border-white/5">
+          <dl className="divide-y divide-white/5">
             {editing ? (
               <div className="px-6 py-4 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="brand" className="block text-xs font-medium text-gray-500 mb-1">Brand</label>
-                    <input id="brand" name="brand" type="text" value={editData.brand || ''} onChange={e => setEditData({ ...editData, brand: e.target.value })} className="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-indigo-500" />
+                    <label htmlFor="brand" className="block text-xs font-medium text-slate-500 mb-1">Brand</label>
+                    <input id="brand" name="brand" type="text" value={editData.brand || ''} onChange={e => setEditData({ ...editData, brand: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500/50 transition-all hover:border-white/20" />
                   </div>
                   <div>
-                    <label htmlFor="category" className="block text-xs font-medium text-gray-500 mb-1">Category</label>
-                    <select id="category" name="category" value={editData.category || ''} onChange={e => setEditData({ ...editData, category: e.target.value })} className="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-indigo-500">
-                      {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    <label htmlFor="category" className="block text-xs font-medium text-slate-500 mb-1">Category</label>
+                    <select id="category" name="category" value={editData.category || ''} onChange={e => setEditData({ ...editData, category: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500/50 transition-all hover:border-white/20">
+                      {CATEGORIES.map(c => <option key={c} value={c} className="bg-[#151c2e]">{c}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label htmlFor="purchaseDate" className="block text-xs font-medium text-gray-500 mb-1">Purchase Date</label>
-                    <input id="purchaseDate" name="purchaseDate" type="date" value={editData.purchase_date || ''} onChange={e => setEditData({ ...editData, purchase_date: e.target.value })} className="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-indigo-500" />
+                    <label htmlFor="purchaseDate" className="block text-xs font-medium text-slate-500 mb-1">Purchase Date</label>
+                    <input id="purchaseDate" name="purchaseDate" type="date" value={editData.purchase_date || ''} onChange={e => setEditData({ ...editData, purchase_date: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500/50 transition-all hover:border-white/20" />
                   </div>
                   <div>
-                    <label htmlFor="warrantyMonths" className="block text-xs font-medium text-gray-500 mb-1">Warranty (Months)</label>
-                    <select id="warrantyMonths" name="warrantyMonths" value={editData.warranty_months || 12} onChange={e => setEditData({ ...editData, warranty_months: parseInt(e.target.value) })} className="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-indigo-500">
-                      {[3, 6, 12, 18, 24, 36, 48, 60].map(m => <option key={m} value={m}>{m} Months</option>)}
+                    <label htmlFor="warrantyMonths" className="block text-xs font-medium text-slate-500 mb-1">Warranty (Months)</label>
+                    <select id="warrantyMonths" name="warrantyMonths" value={editData.warranty_months || 12} onChange={e => setEditData({ ...editData, warranty_months: parseInt(e.target.value) })} className="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500/50 transition-all hover:border-white/20">
+                      {[3, 6, 12, 18, 24, 36, 48, 60].map(m => <option key={m} value={m} className="bg-[#151c2e]">{m} Months</option>)}
                     </select>
                   </div>
                 </div>
                 <div>
-                  <label htmlFor="purchasePrice" className="block text-xs font-medium text-gray-500 mb-1">Purchase Price (₹)</label>
-                  <input id="purchasePrice" name="purchasePrice" type="number" value={editData.purchase_price || ''} onChange={e => setEditData({ ...editData, purchase_price: parseFloat(e.target.value) })} className="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-indigo-500" placeholder="e.g., 25000" />
+                  <label htmlFor="purchasePrice" className="block text-xs font-medium text-slate-500 mb-1">Purchase Price (₹)</label>
+                  <input id="purchasePrice" name="purchasePrice" type="number" value={editData.purchase_price || ''} onChange={e => setEditData({ ...editData, purchase_price: parseFloat(e.target.value) })} className="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500/50 transition-all hover:border-white/20" placeholder="e.g., 25000" />
                 </div>
                 <div>
-                  <label htmlFor="invoiceNumber" className="block text-xs font-medium text-gray-500 mb-1">Invoice Number</label>
-                  <input id="invoiceNumber" name="invoiceNumber" type="text" value={editData.invoice_number || ''} onChange={e => setEditData({ ...editData, invoice_number: e.target.value })} className="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-indigo-500" />
+                  <label htmlFor="invoiceNumber" className="block text-xs font-medium text-slate-500 mb-1">Invoice Number</label>
+                  <input id="invoiceNumber" name="invoiceNumber" type="text" value={editData.invoice_number || ''} onChange={e => setEditData({ ...editData, invoice_number: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500/50 transition-all hover:border-white/20" />
                 </div>
                 <div>
-                  <label htmlFor="notes" className="block text-xs font-medium text-gray-500 mb-1">Notes</label>
-                  <textarea id="notes" name="notes" rows={3} value={editData.notes || ''} onChange={e => setEditData({ ...editData, notes: e.target.value })} className="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-indigo-500" />
+                  <label htmlFor="notes" className="block text-xs font-medium text-slate-500 mb-1">Notes</label>
+                  <textarea id="notes" name="notes" rows={3} value={editData.notes || ''} onChange={e => setEditData({ ...editData, notes: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500/50 transition-all hover:border-white/20" />
                 </div>
               </div>
             ) : (
@@ -392,9 +392,9 @@ export default function ProductDetails() {
                 )}
                 {product.invoice_file_url && (
                   <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 px-6">
-                    <dt className="text-sm font-medium text-gray-500">Invoice File</dt>
-                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                      <a href={product.invoice_file_url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 transition-colors">
+                    <dt className="text-sm font-medium text-slate-500">Invoice File</dt>
+                    <dd className="mt-1 text-sm text-slate-200 sm:mt-0 sm:col-span-2">
+                      <a href={product.invoice_file_url} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1.5 transition-colors">
                         <FileText className="w-4 h-4" /> View Invoice
                       </a>
                     </dd>
@@ -409,7 +409,7 @@ export default function ProductDetails() {
         </div>
 
         {/* Actions */}
-        <div className="px-6 py-5 border-t border-gray-100 bg-gray-50/50">
+        <div className="px-6 py-5 border-t border-white/5 bg-white/[0.02]">
           <div className="flex flex-wrap gap-3">
             {serviceInfo && (
               <>
@@ -425,25 +425,25 @@ export default function ProductDetails() {
               </>
             )}
 
-            <button onClick={handleTestReminder} className="inline-flex items-center px-4 py-2 border border-gray-200 shadow-sm text-sm font-semibold rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:shadow-md active:scale-95 transition-all">
+            <button onClick={handleTestReminder} className="inline-flex items-center px-4 py-2 border border-white/10 shadow-sm text-sm font-semibold rounded-xl text-slate-300 bg-white/5 hover:bg-white/10 hover:shadow-md active:scale-95 transition-all btn-tactile">
               <Bell className="w-4 h-4 mr-2 text-amber-500" /> Test Reminder
             </button>
 
-            <button onClick={() => { setShowIssuePrompt(true); }} disabled={generatingClaim} className="inline-flex items-center px-4 py-2 border border-indigo-200 shadow-sm text-sm font-semibold rounded-xl text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:shadow-md active:scale-95 transition-all disabled:opacity-50">
+            <button onClick={() => { setShowIssuePrompt(true); }} disabled={generatingClaim} className="inline-flex items-center px-4 py-2 border border-indigo-500/20 shadow-sm text-sm font-semibold rounded-xl text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 hover:shadow-md active:scale-95 transition-all disabled:opacity-50 btn-tactile">
               <Wand2 className="w-4 h-4 mr-2" /> {generatingClaim ? 'Generating...' : 'Generate Claim Email'}
             </button>
 
             {editing ? (
               <>
-                <button onClick={handleSave} disabled={saving} className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-semibold rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 hover:shadow-md active:scale-95 transition-all disabled:opacity-50">
+                <button onClick={handleSave} disabled={saving} className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 hover:shadow-md active:scale-95 transition-all disabled:opacity-50 btn-tactile">
                   <Save className="w-4 h-4 mr-2" /> {saving ? 'Saving...' : 'Save Changes'}
                 </button>
-                <button onClick={() => { setEditing(false); setEditData(product); }} className="inline-flex items-center px-4 py-2 border border-gray-200 shadow-sm text-sm font-semibold rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:shadow-md active:scale-95 transition-all">
+                <button onClick={() => { setEditing(false); setEditData(product); }} className="inline-flex items-center px-4 py-2 border border-white/10 shadow-sm text-sm font-semibold rounded-xl text-slate-300 bg-white/5 hover:bg-white/10 hover:shadow-md active:scale-95 transition-all btn-tactile">
                   <X className="w-4 h-4 mr-2" /> Cancel
                 </button>
               </>
             ) : (
-              <button onClick={() => setEditing(true)} className="inline-flex items-center px-4 py-2 border border-gray-200 shadow-sm text-sm font-semibold rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:shadow-md active:scale-95 transition-all">
+              <button onClick={() => setEditing(true)} className="inline-flex items-center px-4 py-2 border border-white/10 shadow-sm text-sm font-semibold rounded-xl text-slate-300 bg-white/5 hover:bg-white/10 hover:shadow-md active:scale-95 transition-all btn-tactile">
                 <Edit2 className="w-4 h-4 mr-2 text-indigo-500" /> Edit
               </button>
             )}
@@ -456,29 +456,29 @@ export default function ProductDetails() {
 
         {/* Issue Prompt Modal */}
         {showIssuePrompt && (
-          <div className="px-6 py-5 border-t border-gray-100 bg-amber-50/50">
-            <h4 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+          <div className="px-6 py-5 border-t border-white/5 bg-amber-500/5">
+            <h4 className="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-amber-500" /> What issue are you facing?
             </h4>
             <textarea
               value={issueDescription}
               onChange={(e) => setIssueDescription(e.target.value)}
               placeholder="e.g., Screen flickering intermittently, Battery draining fast, Unusual noise from drum..."
-              className="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-indigo-500 mb-3"
+              className="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-3 text-sm text-slate-200 placeholder-slate-600 focus:ring-2 focus:ring-indigo-500/50 mb-3 transition-all hover:border-white/20"
               rows={2}
             />
             <div className="flex gap-2">
               <button
                 onClick={handleGenerateClaim}
                 disabled={!issueDescription.trim() || generatingClaim}
-                className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-medium rounded-lg hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 transition-all btn-tactile"
               >
                 {generatingClaim ? <Loader className="w-4 h-4 mr-2 animate-spin" /> : <Wand2 className="w-4 h-4 mr-2" />}
                 Generate Email
               </button>
               <button
                 onClick={() => setShowIssuePrompt(false)}
-                className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 border border-white/10 text-sm font-medium rounded-lg text-slate-400 bg-white/5 hover:bg-white/10 transition-all btn-tactile"
               >
                 Cancel
               </button>
@@ -488,16 +488,16 @@ export default function ProductDetails() {
 
         {/* Claim Draft */}
         {claimDraft && (
-          <div className="px-6 py-5 border-t border-gray-100 bg-indigo-50/30">
+          <div className="px-6 py-5 border-t border-white/5 bg-indigo-500/5">
             <div className="flex justify-between items-center mb-4">
-              <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <Wand2 className="w-5 h-5 text-indigo-600" /> AI Generated Claim Draft
+              <h4 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
+                <Wand2 className="w-5 h-5 text-indigo-400" /> AI Generated Claim Draft
               </h4>
-              <button onClick={() => setClaimDraft(null)} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => setClaimDraft(null)} className="text-slate-500 hover:text-slate-300">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="bg-white border text-sm text-gray-800 border-gray-200 rounded-xl p-4 whitespace-pre-wrap max-h-96 overflow-y-auto font-medium">
+            <div className="bg-[#0a0e1a] border text-sm text-slate-300 border-indigo-500/10 rounded-xl p-4 whitespace-pre-wrap max-h-96 overflow-y-auto font-medium">
               {claimDraft}
             </div>
             <div className="mt-4 flex flex-wrap gap-3">
@@ -506,14 +506,14 @@ export default function ProductDetails() {
                   navigator.clipboard.writeText(claimDraft);
                   alert('Copied to clipboard!');
                 }}
-                className="inline-flex items-center px-4 py-2 border border-gray-200 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                className="inline-flex items-center px-4 py-2 border border-white/10 shadow-sm text-sm font-medium rounded-lg text-slate-300 bg-white/5 hover:bg-white/10 transition-all btn-tactile"
               >
                 Copy to Clipboard
               </button>
               <button
                 onClick={handleSendClaimEmail}
                 disabled={sendingEmail}
-                className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-medium rounded-lg hover:from-indigo-500 hover:to-purple-500 transition-all disabled:opacity-50 btn-tactile"
               >
                 {sendingEmail ? <Loader className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
                 Send Email
@@ -527,23 +527,23 @@ export default function ProductDetails() {
       </div>
 
       {/* AI Risk Assessment */}
-      <div className="bg-white/80 backdrop-blur-xl shadow-md rounded-2xl border border-gray-200/60 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h4 className="text-base font-bold text-gray-900 flex items-center gap-2">
-            <Brain className="w-5 h-5 text-purple-600" /> AI Risk Assessment
+      <div className="bg-[#151c2e]/80 backdrop-blur-xl shadow-md rounded-2xl border border-indigo-500/10 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 card-interactive">
+        <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+          <h4 className="text-base font-bold text-slate-100 flex items-center gap-2">
+            <Brain className="w-5 h-5 text-purple-400" /> AI Risk Assessment
           </h4>
-          <span className="text-xs text-gray-400">Powered by Claim Intelligence Engine</span>
+          <span className="text-xs text-slate-500">Powered by Claim Intelligence Engine</span>
         </div>
 
         {loadingRisk ? (
           <div className="p-6">
             <div className="animate-pulse space-y-3">
-              <div className="h-4 bg-gray-200 rounded w-3/4" />
-              <div className="h-4 bg-gray-200 rounded w-1/2" />
+              <div className="h-4 bg-slate-800 rounded w-3/4" />
+              <div className="h-4 bg-slate-800 rounded w-1/2" />
               <div className="grid grid-cols-3 gap-4">
-                <div className="h-20 bg-gray-100 rounded-xl" />
-                <div className="h-20 bg-gray-100 rounded-xl" />
-                <div className="h-20 bg-gray-100 rounded-xl" />
+                <div className="h-20 bg-slate-800/50 rounded-xl" />
+                <div className="h-20 bg-slate-800/50 rounded-xl" />
+                <div className="h-20 bg-slate-800/50 rounded-xl" />
               </div>
             </div>
           </div>
@@ -551,38 +551,38 @@ export default function ProductDetails() {
           <div className="p-6 space-y-5">
             {/* Metrics */}
             <div className="grid grid-cols-3 gap-4">
-              <div className="bg-gray-50 rounded-xl p-4 text-center border border-gray-100">
+              <div className="bg-white/5 rounded-xl p-4 text-center border border-white/5">
                 <p className={`text-3xl font-black ${riskAssessment.failureProbability >= 60 ? 'text-red-600' : riskAssessment.failureProbability >= 35 ? 'text-amber-600' : 'text-emerald-600'}`}>
                   {riskAssessment.failureProbability}%
                 </p>
-                <p className="text-xs text-gray-500 mt-1">Failure Probability</p>
+                <p className="text-xs text-slate-500 mt-1">Failure Probability</p>
               </div>
-              <div className="bg-gray-50 rounded-xl p-4 text-center border border-gray-100">
-                <p className="text-3xl font-black text-gray-900">
+              <div className="bg-white/5 rounded-xl p-4 text-center border border-white/5">
+                <p className="text-3xl font-black text-slate-100">
                   ₹{riskAssessment.estimatedRepairCost.toLocaleString('en-IN')}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">Est. Repair Cost</p>
+                <p className="text-xs text-slate-500 mt-1">Est. Repair Cost</p>
               </div>
-              <div className="bg-gray-50 rounded-xl p-4 text-center border border-gray-100">
-                <p className="text-3xl font-black text-indigo-600">{riskAssessment.usedPercent}%</p>
-                <p className="text-xs text-gray-500 mt-1">Warranty Used</p>
+              <div className="bg-white/5 rounded-xl p-4 text-center border border-white/5">
+                <p className="text-3xl font-black text-indigo-400">{riskAssessment.usedPercent}%</p>
+                <p className="text-xs text-slate-500 mt-1">Warranty Used</p>
               </div>
             </div>
 
             {/* Recommendation */}
-            <div className={`rounded-xl p-4 border ${riskAssessment.daysLeft <= 15 ? 'bg-red-50 border-red-200' : riskAssessment.daysLeft <= 30 ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
-              <p className="text-sm font-medium text-gray-900 flex items-center gap-2 mb-1">
-                <Sparkles className="w-4 h-4 text-purple-500" /> Recommended Action
+            <div className={`rounded-xl p-4 border ${riskAssessment.daysLeft <= 15 ? 'bg-red-500/10 border-red-500/20' : riskAssessment.daysLeft <= 30 ? 'bg-amber-500/10 border-amber-500/20' : 'bg-emerald-500/10 border-emerald-500/20'}`}>
+              <p className="text-sm font-medium text-slate-200 flex items-center gap-2 mb-1">
+                <Sparkles className="w-4 h-4 text-purple-400" /> Recommended Action
               </p>
-              <p className="text-sm text-gray-700">{riskAssessment.recommendation}</p>
+              <p className="text-sm text-slate-400">{riskAssessment.recommendation}</p>
             </div>
 
             {/* Common Issues */}
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Common Issues at This Age</p>
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Common Issues at This Age</p>
               <div className="flex flex-wrap gap-2">
                 {riskAssessment.commonIssues.map((issue, i) => (
-                  <span key={i} className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-lg border border-gray-200">
+                  <span key={i} className="px-3 py-1.5 bg-white/5 text-slate-300 text-xs font-medium rounded-lg border border-white/10">
                     {issue}
                   </span>
                 ))}
@@ -591,18 +591,18 @@ export default function ProductDetails() {
 
             {/* Resale Value */}
             {riskAssessment.resaleValue.withWarranty > 0 && (
-              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-100">
-                <p className="text-xs font-medium text-indigo-600 uppercase tracking-wider flex items-center gap-1 mb-3">
+              <div className="bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-xl p-4 border border-indigo-500/20">
+                <p className="text-xs font-medium text-indigo-400 uppercase tracking-wider flex items-center gap-1 mb-3">
                   <TrendingUp className="w-3.5 h-3.5" /> Warranty Resale Value Estimator
                 </p>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-lg font-bold text-indigo-700">₹{riskAssessment.resaleValue.withWarranty.toLocaleString('en-IN')}</p>
-                    <p className="text-xs text-gray-500">With warranty</p>
+                    <p className="text-lg font-bold text-indigo-400">₹{riskAssessment.resaleValue.withWarranty.toLocaleString('en-IN')}</p>
+                    <p className="text-xs text-slate-500">With warranty</p>
                   </div>
                   <div>
-                    <p className="text-lg font-bold text-gray-600">₹{riskAssessment.resaleValue.withoutWarranty.toLocaleString('en-IN')}</p>
-                    <p className="text-xs text-gray-500">Without warranty</p>
+                    <p className="text-lg font-bold text-slate-500">₹{riskAssessment.resaleValue.withoutWarranty.toLocaleString('en-IN')}</p>
+                    <p className="text-xs text-slate-500">Without warranty</p>
                   </div>
                 </div>
                 <p className="text-xs text-indigo-500 mt-2 font-medium">
@@ -612,7 +612,7 @@ export default function ProductDetails() {
             )}
           </div>
         ) : (
-          <div className="p-6 text-center text-gray-400 text-sm">
+          <div className="p-6 text-center text-slate-500 text-sm">
             Unable to load risk assessment
           </div>
         )}
@@ -620,18 +620,18 @@ export default function ProductDetails() {
 
       {/* Service Centers */}
       {serviceInfo?.centers && serviceInfo.centers.length > 0 && (
-        <div className="bg-white/80 backdrop-blur-xl shadow-md rounded-2xl border border-gray-200/60 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h4 className="text-base font-bold text-gray-900 flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-emerald-600" /> Nearby Service Centers
+        <div className="bg-[#151c2e]/80 backdrop-blur-xl shadow-md rounded-2xl border border-indigo-500/10 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 card-interactive">
+          <div className="px-6 py-4 border-b border-white/5">
+            <h4 className="text-base font-bold text-slate-100 flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-emerald-400" /> Nearby Service Centers
             </h4>
           </div>
           <div className="p-6">
             <div className="space-y-3">
               {serviceInfo.centers.map((center, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                  <span className="text-sm text-gray-700">{center}</span>
+                <div key={i} className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10 transition-all">
+                  <MapPin className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                  <span className="text-sm text-slate-300">{center}</span>
                 </div>
               ))}
             </div>
@@ -645,8 +645,8 @@ export default function ProductDetails() {
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 px-6">
-      <dt className="text-sm font-medium text-gray-500">{label}</dt>
-      <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{value}</dd>
+      <dt className="text-sm font-medium text-slate-500">{label}</dt>
+      <dd className="mt-1 text-sm text-slate-200 sm:mt-0 sm:col-span-2">{value}</dd>
     </div>
   );
 }
@@ -657,7 +657,7 @@ function ActionButton({ href, icon, label, isExternal }: { href: string; icon: R
       href={href}
       target={isExternal ? '_blank' : undefined}
       rel={isExternal ? 'noopener noreferrer' : undefined}
-      className="inline-flex items-center px-4 py-2 border border-gray-200 shadow-sm text-sm font-semibold rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:shadow-md active:scale-95 transition-all"
+      className="inline-flex items-center px-4 py-2 border border-white/10 shadow-sm text-sm font-semibold rounded-xl text-slate-300 bg-white/5 hover:bg-white/10 hover:shadow-md active:scale-95 transition-all btn-tactile"
     >
       {icon}
       <span className="ml-2">{label}</span>

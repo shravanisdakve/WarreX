@@ -87,9 +87,9 @@ export default function Assistant() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-10rem)] bg-white shadow-lg rounded-2xl overflow-hidden border border-gray-100">
+    <div className="flex flex-col h-[calc(100vh-10rem)] bg-[#151c2e] shadow-lg rounded-2xl overflow-hidden border border-indigo-500/10">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-5 py-4 text-white flex justify-between items-center">
+      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-5 py-4 text-white flex justify-between items-center shadow-lg">
         <h2 className="text-lg font-semibold flex items-center">
           <Brain className="w-5 h-5 mr-2" />
           AI Advisor
@@ -102,7 +102,7 @@ export default function Assistant() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#0a0e1a]/50">
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`flex items-end gap-2 max-w-[85%] ${msg.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -111,10 +111,10 @@ export default function Assistant() {
               </div>
               <div className={`px-4 py-3 rounded-2xl ${msg.sender === 'user'
                 ? 'bg-indigo-600 text-white rounded-br-md'
-                : 'bg-white text-gray-800 border border-gray-200 rounded-bl-md shadow-sm'
+                : 'bg-[#1a2340] text-slate-200 border border-indigo-500/10 rounded-bl-md shadow-sm'
                 }`}>
                 {msg.isLoading ? (
-                  <div className="flex items-center gap-2 text-gray-400">
+                  <div className="flex items-center gap-2 text-slate-400">
                     <div className="flex gap-1">
                       <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
                       <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
@@ -127,7 +127,7 @@ export default function Assistant() {
                     {msg.sender === 'bot' ? renderMessage(msg.text) : msg.text}
                   </div>
                 )}
-                <span className={`text-xs block mt-1.5 ${msg.sender === 'user' ? 'text-indigo-200' : 'text-gray-400'}`}>
+                <span className={`text-xs block mt-1.5 ${msg.sender === 'user' ? 'text-indigo-200' : 'text-slate-500'}`}>
                   {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
@@ -139,15 +139,15 @@ export default function Assistant() {
 
       {/* Quick Actions */}
       {messages.length <= 2 && (
-        <div className="px-4 py-3 bg-white border-t border-gray-100">
-          <p className="text-xs text-gray-500 mb-2">Quick actions:</p>
+        <div className="px-4 py-3 bg-[#151c2e] border-t border-white/5">
+          <p className="text-xs text-slate-500 mb-2">Quick actions:</p>
           <div className="flex flex-wrap gap-2">
             {QUICK_ACTIONS.map((action, i) => (
               <button
                 key={i}
                 onClick={() => sendMessage(action.message)}
                 disabled={isLoading}
-                className="text-xs font-semibold px-4 py-2 bg-indigo-50/80 text-indigo-700 rounded-full hover:bg-indigo-100 hover:shadow-md hover:-translate-y-0.5 active:scale-95 transition-all disabled:opacity-50 border border-indigo-100/50"
+                className="text-xs font-semibold px-4 py-2 bg-indigo-500/10 text-indigo-400 rounded-full hover:bg-indigo-500/20 hover:shadow-md hover:-translate-y-0.5 active:scale-95 transition-all disabled:opacity-50 border border-indigo-500/20 btn-tactile"
               >
                 {action.label}
               </button>
@@ -157,7 +157,7 @@ export default function Assistant() {
       )}
 
       {/* Input */}
-      <form onSubmit={handleSend} className="p-4 bg-white border-t border-gray-200 flex gap-2">
+      <form onSubmit={handleSend} className="p-4 bg-[#151c2e] border-t border-white/5 flex gap-2">
         <input
           id="assistantInput"
           name="assistantInput"
@@ -167,7 +167,7 @@ export default function Assistant() {
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask about warranties, claim strategies, service centers..."
           disabled={isLoading}
-          className="flex-1 border border-gray-300 rounded-full px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm disabled:bg-gray-50 transition-shadow"
+          className="flex-1 bg-white/5 border border-white/10 rounded-full px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-sm text-slate-200 placeholder-slate-600 disabled:bg-white/[0.02] transition-all hover:border-white/20"
         />
         <button
           type="submit"

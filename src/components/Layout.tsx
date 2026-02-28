@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 // @ts-ignore
 import { motion, AnimatePresence } from 'motion/react';
@@ -7,44 +7,40 @@ import Navbar from './Navbar';
 
 export default function Layout() {
   const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-slate-100 flex flex-col">
-      <Navbar />
+    <div className="min-h-screen bg-[#0a0e1a] flex">
+      {/* Ambient background effects */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-indigo-600/5 rounded-full blur-[150px]" />
+        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-purple-600/5 rounded-full blur-[120px]" />
+      </div>
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-          >
-            <Outlet />
-          </motion.div>
-        </AnimatePresence>
-      </main>
+      {/* Sidebar */}
+      <Navbar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
-      {/* Footer with tech stack */}
-      <footer className="border-t border-gray-100 bg-white mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-indigo-500" />
-              <span className="text-sm font-medium text-gray-600">Warrify</span>
-              <span className="text-xs text-gray-400">© {new Date().getFullYear()}</span>
-            </div>
-            <div className="flex flex-wrap justify-center gap-1.5">
-              {['React 19', 'TypeScript', 'Node.js', 'SQLite', 'Gemini AI', 'Tesseract OCR', 'JWT', 'Nodemailer'].map(tech => (
-                <span key={tech} className="px-2 py-0.5 bg-gray-100 text-gray-500 text-[10px] font-medium rounded-full border border-gray-200">
-                  {tech}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </footer>
+      {/* Main Content Area — full width always */}
+      <div className="flex-1 flex flex-col min-h-screen w-full relative">
+        {/* Top spacer for hamburger area */}
+        <div className="h-16 flex-shrink-0" />
+
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 relative z-10">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
+        </main>
+
+
+      </div>
     </div>
   );
 }

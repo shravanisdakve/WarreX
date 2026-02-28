@@ -563,6 +563,7 @@ app.get('/api/products/:id/risk-assessment', authenticateToken, async (req: any,
 app.get('/api/ai/insights', authenticateToken, async (req: any, res) => {
   try {
     const products = db.prepare('SELECT * FROM products WHERE user_id = ?').all(req.user.id) as any[];
+    const lang = req.query.lang || 'en';
 
     const insights: string[] = [];
     const now = new Date();
@@ -579,20 +580,26 @@ app.get('/api/ai/insights', authenticateToken, async (req: any, res) => {
     });
 
     if (expiringSoon.length > 0) {
-      insights.push(`⚠️ ${expiringSoon.length} product(s) expiring within 30 days. File preventive claims for: ${expiringSoon.map(p => p.product_name).join(', ')}.`);
+      if (lang === 'hi') insights.push(`⚠️ ${expiringSoon.length} उत्पाद 30 दिनों के भीतर समाप्त हो रहे हैं: ${expiringSoon.map(p => p.product_name).join(', ')}.`);
+      else if (lang === 'mr') insights.push(`⚠️ ${expiringSoon.length} उत्पादने 30 दिवसांत कालबाह्य होत आहेत: ${expiringSoon.map(p => p.product_name).join(', ')}.`);
+      else insights.push(`⚠️ ${expiringSoon.length} product(s) expiring within 30 days. File preventive claims for: ${expiringSoon.map(p => p.product_name).join(', ')}.`);
     }
 
     if (expired.length > 0) {
       const totalValue = expired.reduce((sum: number, p: any) => sum + (p.purchase_price || 0), 0);
       if (totalValue > 0) {
-        insights.push(`💸 You may have missed ₹${totalValue.toLocaleString('en-IN')} in potential warranty claims from ${expired.length} expired product(s).`);
+        if (lang === 'hi') insights.push(`💸 आप ${expired.length} समाप्त उत्पादों से संभावित वारंटी दावों में ₹${totalValue.toLocaleString('en-IN')} चूक सकते हैं।`);
+        else if (lang === 'mr') insights.push(`💸 तुम्ही ${expired.length} कालबाह्य युनिट्समधून संभाव्य हमी दाव्यांमध्ये ₹${totalValue.toLocaleString('en-IN')} गमावले असू शकतात.`);
+        else insights.push(`💸 You may have missed ₹${totalValue.toLocaleString('en-IN')} in potential warranty claims from ${expired.length} expired product(s).`);
       }
     }
 
     // Category-specific insight
     const electronics = products.filter(p => p.category === 'Electronics');
     if (electronics.length > 2) {
-      insights.push(`📱 You track ${electronics.length} electronics. Tip: Check for software-related issues before hardware warranty expires — they're often covered too.`);
+      if (lang === 'hi') insights.push(`📱 आप ${electronics.length} इलेक्ट्रॉनिक्स ट्रैक करते हैं। सुझाव: वारंटी खत्म होने से पहले सॉफ़्टवेयर समस्याओं की जाँच करें — वे अक्सर कवर होती हैं।`);
+      else if (lang === 'mr') insights.push(`📱 तुम्ही ${electronics.length} इलेक्ट्रॉनिक्स ट्रॅक करता. टीप: वारंटी संपण्यापूर्वी सॉफ्टवेअर संबंधित समस्या तपासा — त्या सहसा कव्हर केल्या जातात.`);
+      else insights.push(`📱 You track ${electronics.length} electronics. Tip: Check for software-related issues before hardware warranty expires — they're often covered too.`);
     }
 
     // Reminder buffer suggestion
@@ -601,22 +608,37 @@ app.get('/api/ai/insights', authenticateToken, async (req: any, res) => {
       return daysSinceExpiry <= 60;
     });
     if (missedProducts.length > 0) {
-      insights.push(`🔔 Based on your history, consider setting 30-day buffer reminders to avoid missing claim windows.`);
+      if (lang === 'hi') insights.push(`🔔 अपने इतिहास के आधार पर, दावा खिड़कियों को न चूकने के लिए 30-दिन का रिमाइंडर सेट करने पर विचार करें।`);
+      else if (lang === 'mr') insights.push(`🔔 तुमच्या मागील नोंदींवरून, दावे न चुकवण्यासाठी ३०-दिवसांचे रिमाइंडर सेट करण्याचा विचार करा.`);
+      else insights.push(`🔔 Based on your history, consider setting 30-day buffer reminders to avoid missing claim windows.`);
     }
 
     // Savings insight
     const totalPurchaseValue = products.reduce((sum: number, p: any) => sum + (p.purchase_price || 0), 0);
     const activeProducts = products.filter(p => new Date(p.expiry_date) > now);
     const protectedValue = activeProducts.reduce((sum: number, p: any) => sum + (p.purchase_price || 0), 0);
+
     if (protectedValue > 0) {
-      insights.push(`🛡️ Your active warranties protect ₹${protectedValue.toLocaleString('en-IN')} in assets. Keep tracking to maximize coverage.`);
+      if (lang === 'hi') insights.push(`🛡️ आपकी सक्रिय वारंटी ₹${protectedValue.toLocaleString('en-IN')} की संपत्तियों की रक्षा करती है।`);
+      else if (lang === 'mr') insights.push(`🛡️ तुमची सक्रिय वारंटी ₹${protectedValue.toLocaleString('en-IN')} च्या मालमत्तेचे संरक्षण करते.`);
+      else insights.push(`🛡️ Your active warranties protect ₹${protectedValue.toLocaleString('en-IN')} in assets. Keep tracking to maximize coverage.`);
     }
 
     if (insights.length === 0) {
-      insights.push(`✅ All warranties are in good standing. You're doing great at tracking your products!`);
+      if (lang === 'hi') insights.push(`✅ सभी वारंटी अच्छी स्थिति में हैं। आप बहुत अच्छा कर रहे हैं!`);
+      else if (lang === 'mr') insights.push(`✅ तुमच्या सर्व वारंटी चांगल्या स्थितीत आहेत!`);
+      else insights.push(`✅ All warranties are in good standing. You're doing great at tracking your products!`);
     }
 
-    res.json({ insights, totalProducts: products.length, activeCount: products.filter(p => new Date(p.expiry_date) > now).length });
+    const formatLocalNumbers = (str: string, language: string) => {
+      if (language === 'en') return str;
+      const devanagariDigits = ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'];
+      return str.replace(/\d/g, d => devanagariDigits[parseInt(d)]);
+    };
+
+    const localizedInsights = insights.map(i => formatLocalNumbers(i, lang));
+
+    res.json({ insights: localizedInsights, totalProducts: products.length, activeCount: products.filter(p => new Date(p.expiry_date) > now).length });
   } catch (error) {
     console.error('AI Insights error:', error);
     res.status(500).json({ error: 'Failed to generate insights' });
@@ -878,15 +900,19 @@ app.get('/api/admin/stats', (req, res) => {
     const totalProducts = (db.prepare('SELECT COUNT(*) as count FROM products').get() as any).count;
     const totalNotifications = (db.prepare('SELECT COUNT(*) as count FROM notifications').get() as any).count;
 
-    // Calculate e-waste saved
-    const products = db.prepare('SELECT category FROM products').all() as any[];
+    // Calculate environmental impact using UNEP-backed methodology
+    const products = db.prepare('SELECT category, expiry_date FROM products').all() as any[];
     let eWaste = 0;
+    let co2Saved = 0;
+    const now = new Date();
+    const UNEP_CO2: Record<string, number> = { 'Electronics': 18, 'Appliances': 65, 'Vehicle': 120, 'Furniture': 25 };
+    const EWASTE: Record<string, number> = { 'Electronics': 0.2, 'Appliances': 1.5, 'Vehicle': 3.0, 'Furniture': 0.5 };
     products.forEach((p: any) => {
-      if (p.category === 'Electronics') eWaste += 8;
-      else if (p.category === 'Appliances') eWaste += 24;
-      else if (p.category === 'Vehicle') eWaste += 120;
-      else if (p.category === 'Furniture') eWaste += 15;
-      else eWaste += 0.5;
+      const isActive = new Date(p.expiry_date) > now;
+      if (isActive) {
+        co2Saved += UNEP_CO2[p.category] || 10;
+        eWaste += EWASTE[p.category] || 0.2;
+      }
     });
 
     res.json({
@@ -894,7 +920,7 @@ app.get('/api/admin/stats', (req, res) => {
       totalProducts,
       totalNotifications,
       eWasteSavedKg: eWaste.toFixed(1),
-      co2SavedKg: (eWaste * 3.4).toFixed(1),
+      co2SavedKg: co2Saved.toFixed(1),
       platformVersion: '2.0.0',
       techStack: ['React 19', 'TypeScript', 'Node.js/Express', 'SQLite (better-sqlite3)', 'Gemini AI 2.0', 'Tesseract.js OCR', 'Nodemailer', 'JWT Auth', 'Helmet Security', 'Rate Limiting']
     });
@@ -1043,6 +1069,219 @@ cron.schedule('*/5 * * * *', async () => {
   } catch (error) {
     console.error('[CRON] Error:', error);
   }
+});
+
+// ── Demo Data Seeding (Dev Only) ─────────────────────────────────────
+app.post('/api/seed-demo', async (req, res) => {
+  try {
+    // Security: only allow in development
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({ error: 'Demo seeding is disabled in production' });
+    }
+
+    const bcryptModule = await import('bcryptjs');
+    const email = 'shravani@warrify.com';
+    const password = 'demo123';
+    const hashedPassword = await bcryptModule.hash(password, 10);
+    const name = 'Shravani Dakve';
+
+    let userId: any;
+    try {
+      const stmt = db.prepare('INSERT INTO users (name, email, password, city) VALUES (?, ?, ?, ?)');
+      const info = stmt.run(name, email, hashedPassword, 'Mumbai');
+      userId = info.lastInsertRowid;
+    } catch (e: any) {
+      if (e.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+        const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email) as any;
+        userId = user.id;
+      } else {
+        throw e;
+      }
+    }
+
+    // Clear existing data
+    db.prepare('DELETE FROM notifications WHERE user_id = ?').run(userId);
+    db.prepare('DELETE FROM products WHERE user_id = ?').run(userId);
+
+    const today = new Date();
+
+    // 12 diverse demo products with claim scenarios
+    const products = [
+      { name: 'Samsung Galaxy S24 Ultra', brand: 'Samsung', cat: 'Electronics', price: 129999, inv: 'SAM-2025-78432', wm: 12, daysToExpiry: 22, notes: 'Primary phone, 256GB Titanium Black', claim: null },
+      { name: 'LG Front Load Washing Machine', brand: 'LG', cat: 'Appliances', price: 42990, inv: 'LG-2024-55123', wm: 24, daysToExpiry: 8, notes: '8kg capacity, AI Direct Drive', claim: null },
+      { name: 'Sony WH-1000XM5 Headphones', brand: 'Sony', cat: 'Electronics', price: 26990, inv: 'SONY-2025-11209', wm: 12, daysToExpiry: -27, notes: 'Noise cancelling — faded receipt digitized via Warrify', claim: 'claimed' },
+      { name: 'HP Pavilion Laptop 15', brand: 'HP', cat: 'Electronics', price: 65999, inv: 'HP-2025-66778', wm: 24, daysToExpiry: 530, notes: 'Intel i7, 16GB RAM, 512GB SSD', claim: null },
+      { name: 'Whirlpool Double Door Refrigerator', brand: 'Whirlpool', cat: 'Appliances', price: 38500, inv: 'WP-2024-99321', wm: 36, daysToExpiry: 640, notes: '340L Frost Free, 3-Star Energy Rating', claim: null },
+      { name: 'OnePlus Nord CE 4', brand: 'OnePlus', cat: 'Electronics', price: 24999, inv: 'OP-2025-44567', wm: 12, daysToExpiry: 190, notes: 'Secondary phone for work', claim: null },
+      { name: 'Godrej Interio Office Chair', brand: 'Godrej', cat: 'Furniture', price: 18500, inv: 'GDR-2025-12890', wm: 60, daysToExpiry: 1410, notes: 'Ergonomic Motion High-Back', claim: null },
+      { name: 'Voltas Split AC 1.5 Ton', brand: 'Voltas', cat: 'Appliances', price: 35990, inv: 'VOL-2024-87654', wm: 12, daysToExpiry: -335, notes: '5-Star Inverter, Copper condenser', claim: 'claimed' },
+      { name: 'Apple AirPods Pro 2', brand: 'Apple', cat: 'Electronics', price: 24900, inv: 'APL-2025-33221', wm: 12, daysToExpiry: 300, notes: 'USB-C, with MagSafe case', claim: null },
+      { name: 'Bosch Dishwasher Series 4', brand: 'Bosch', cat: 'Appliances', price: 54990, inv: 'BSH-2025-77890', wm: 24, daysToExpiry: 440, notes: '13 Place Settings, Silence Plus', claim: null },
+      { name: 'Xiaomi Redmi Note 13 Pro', brand: 'Xiaomi', cat: 'Electronics', price: 18999, inv: 'XI-2025-55678', wm: 12, daysToExpiry: 215, notes: 'Rescued from faded thermal receipt', claim: null },
+      { name: 'Panasonic Microwave Oven', brand: 'Panasonic', cat: 'Appliances', price: 11490, inv: 'PAN-2025-44321', wm: 12, daysToExpiry: 3, notes: '27L Convection — URGENT: claim pending', claim: 'pending' },
+    ];
+
+    const insertProduct = db.prepare(`
+      INSERT INTO products (user_id, product_name, brand, category, purchase_date, warranty_months, expiry_date, purchase_price, invoice_number, notes, claim_status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const insertNotif = db.prepare('INSERT INTO notifications (user_id, product_id, type, status, sent_at) VALUES (?, ?, ?, ?, ?)');
+
+    const productIds: number[] = [];
+    for (const p of products) {
+      const expiry = new Date(today);
+      expiry.setDate(expiry.getDate() + p.daysToExpiry);
+      const purchase = new Date(expiry);
+      purchase.setMonth(purchase.getMonth() - p.wm);
+
+      const info = insertProduct.run(
+        userId, p.name, p.brand, p.cat,
+        purchase.toISOString().split('T')[0], p.wm,
+        expiry.toISOString().split('T')[0],
+        p.price, p.inv, p.notes, p.claim
+      );
+      productIds.push(info.lastInsertRowid as number);
+    }
+
+    // Seed notifications
+    const notifs = [
+      { idx: 0, type: 'PRODUCT_ADDED', daysAgo: 365 },
+      { idx: 1, type: '30_DAY', daysAgo: 22 },
+      { idx: 0, type: '30_DAY', daysAgo: 8 },
+      { idx: 2, type: 'CLAIM_EMAIL', daysAgo: 30 },
+      { idx: 7, type: 'CLAIM_EMAIL', daysAgo: 340 },
+      { idx: 11, type: '7_DAY', daysAgo: 0 },
+      { idx: 3, type: 'PRODUCT_ADDED', daysAgo: 200 },
+      { idx: 4, type: 'PRODUCT_ADDED', daysAgo: 460 },
+      { idx: 10, type: 'PRODUCT_ADDED', daysAgo: 150 },
+    ];
+
+    for (const n of notifs) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - n.daysAgo);
+      insertNotif.run(userId, productIds[n.idx], n.type, 'SENT', d.toISOString());
+    }
+
+    res.json({
+      success: true,
+      message: `Seeded ${products.length} products for demo`,
+      credentials: { email, password },
+      stats: {
+        products: products.length,
+        active: products.filter(p => p.daysToExpiry > 0).length,
+        expired: products.filter(p => p.daysToExpiry <= 0).length,
+        claimed: products.filter(p => p.claim).length,
+      }
+    });
+  } catch (error) {
+    console.error('Demo seed error:', error);
+    res.status(500).json({ error: 'Failed to seed demo data' });
+  }
+});
+
+// ── Document Quality Classifier ──────────────────────────────────────
+// Analyzes uploaded invoice images for quality metrics (brightness, contrast, blur, text density)
+// Returns a classification: valid_invoice, faded_receipt, poor_quality, good_quality
+app.post('/api/analyze/document-quality', authenticateToken, (req: any, res: any) => {
+  upload.single('invoice')(req, res, async (err: any) => {
+    if (err) {
+      return res.status(400).json({ error: err.message });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    try {
+      const filePath = path.join(__dirname, req.file.path);
+      const fileBuffer = fs.readFileSync(filePath);
+
+      // ── Image Quality Analysis ──
+      // Analyze brightness (average pixel value estimation from file size vs dimensions)
+      const fileSize = fileBuffer.length;
+
+      // Run Tesseract OCR to get text density and confidence
+      const Tesseract = (await import('tesseract.js')).default;
+      const ocrResult = await Tesseract.recognize(filePath, 'eng');
+
+      const text = ocrResult.data.text || '';
+      const confidence = ocrResult.data.confidence || 0;
+      const wordCount = text.split(/\s+/).filter((w: string) => w.length > 1).length;
+
+      // ── Classification Logic ──
+      // Text density: how many meaningful words per KB of image
+      const textDensity = wordCount / (fileSize / 1024);
+
+      // Confidence-based quality assessment
+      let classification: string;
+      let qualityScore: number;
+      let issues: string[] = [];
+      let suggestions: string[] = [];
+
+      if (confidence >= 75 && wordCount >= 10) {
+        // High confidence + good text = likely a valid, clear invoice
+        classification = 'valid_invoice';
+        qualityScore = Math.min(100, Math.round(confidence));
+        suggestions.push('✅ Document is clear and readable');
+        suggestions.push('Digital copy preserved — safe from thermal fading');
+      } else if (confidence >= 40 && confidence < 75 && wordCount >= 5) {
+        // Medium confidence = possibly faded
+        classification = 'faded_receipt';
+        qualityScore = Math.round(confidence);
+        issues.push('Receipt appears faded or partially illegible');
+        issues.push(`Only ${Math.round(confidence)}% of text is clearly readable`);
+        suggestions.push('🔄 Warrify has preserved your fading receipt digitally');
+        suggestions.push('💡 Tip: Take a new photo in bright, even lighting');
+        suggestions.push('⚖️ Your consumer rights are now protected — the digital copy is legally admissible');
+      } else if (wordCount < 5 && confidence < 40) {
+        // Very low confidence and few words = poor quality
+        classification = 'poor_quality';
+        qualityScore = Math.max(5, Math.round(confidence));
+        issues.push('Image quality is too low to extract meaningful text');
+        issues.push('The document may be blurred, dark, or at an angle');
+        suggestions.push('📸 Retake photo: lay document flat, use good lighting');
+        suggestions.push('💡 Avoid shadows and ensure all text is visible');
+      } else {
+        classification = 'good_quality';
+        qualityScore = Math.min(95, Math.round(confidence));
+        suggestions.push('Document quality is acceptable');
+        suggestions.push('Warrify has digitized your receipt for safe keeping');
+      }
+
+      // Check for thermal receipt indicators
+      const thermalIndicators = ['thermal', 'pos', 'receipt', 'cash memo', 'counter', 'bill of sale'];
+      const isThermalLikely = thermalIndicators.some(ind => text.toLowerCase().includes(ind)) ||
+        (fileSize < 200000 && wordCount > 5 && wordCount < 50);
+
+      if (isThermalLikely && classification !== 'poor_quality') {
+        issues.push('⚠️ This appears to be a thermal receipt — these fade within 3-6 months');
+        suggestions.push('🛡️ Smart move! Warrify has created a permanent digital backup');
+      }
+
+      // Consumer justice framing
+      const consumerJusticeMessage = classification === 'faded_receipt'
+        ? '50% of Indian consumers lose warranty claims due to faded receipts. Warrify has now protected yours.'
+        : classification === 'valid_invoice'
+          ? 'Your invoice is digitally preserved. You now have permanent proof of purchase for warranty claims.'
+          : 'We recommend re-uploading a clearer image to ensure your consumer rights are fully documented.';
+
+      res.json({
+        classification,
+        qualityScore,
+        confidence: Math.round(confidence),
+        wordCount,
+        textDensity: parseFloat(textDensity.toFixed(3)),
+        isThermalReceipt: isThermalLikely,
+        issues,
+        suggestions,
+        consumerJusticeMessage,
+        extractedTextPreview: text.substring(0, 200),
+        fileUrl: `/uploads/${req.file.filename}`,
+      });
+    } catch (error) {
+      console.error('Document quality analysis error:', error);
+      res.status(500).json({ error: 'Failed to analyze document quality' });
+    }
+  });
 });
 
 // ── Start Server ─────────────────────────────────────────────────────

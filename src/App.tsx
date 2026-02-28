@@ -21,26 +21,25 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-slate-100">
-        {/* Loading skeleton */}
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0e1a]">
         <div className="space-y-4 w-full max-w-md px-6">
           <div className="animate-pulse flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-200 rounded-xl" />
-            <div className="h-5 bg-indigo-100 rounded w-24" />
+            <div className="w-10 h-10 bg-indigo-900/50 rounded-xl" />
+            <div className="h-5 bg-indigo-900/30 rounded w-24" />
           </div>
           <div className="animate-pulse space-y-3">
-            <div className="h-32 bg-gray-200 rounded-2xl" />
+            <div className="h-32 bg-slate-800/50 rounded-2xl" />
             <div className="grid grid-cols-4 gap-3">
-              <div className="h-16 bg-gray-200 rounded-xl" />
-              <div className="h-16 bg-gray-200 rounded-xl" />
-              <div className="h-16 bg-gray-200 rounded-xl" />
-              <div className="h-16 bg-gray-200 rounded-xl" />
+              <div className="h-16 bg-slate-800/50 rounded-xl" />
+              <div className="h-16 bg-slate-800/50 rounded-xl" />
+              <div className="h-16 bg-slate-800/50 rounded-xl" />
+              <div className="h-16 bg-slate-800/50 rounded-xl" />
             </div>
-            <div className="h-12 bg-gray-200 rounded-xl" />
+            <div className="h-12 bg-slate-800/50 rounded-xl" />
             <div className="space-y-2">
-              <div className="h-16 bg-gray-100 rounded-xl" />
-              <div className="h-16 bg-gray-100 rounded-xl" />
-              <div className="h-16 bg-gray-100 rounded-xl" />
+              <div className="h-16 bg-slate-800/30 rounded-xl" />
+              <div className="h-16 bg-slate-800/30 rounded-xl" />
+              <div className="h-16 bg-slate-800/30 rounded-xl" />
             </div>
           </div>
         </div>
@@ -67,8 +66,11 @@ export default function App() {
     <AuthProvider>
       <Router>
         <Suspense fallback={
-          <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-slate-100">
-            <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+          <div className="min-h-screen flex items-center justify-center bg-[#0a0e1a]">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-sm text-slate-500 font-medium">Loading...</p>
+            </div>
           </div>
         }>
           <Routes>

@@ -59,19 +59,19 @@ export default function ProfilePage() {
         <div className="max-w-2xl mx-auto space-y-6">
             {/* Skeleton loader */}
             <div className="animate-pulse space-y-4">
-                <div className="h-6 bg-gray-200 rounded w-32" />
-                <div className="bg-white rounded-2xl p-8 space-y-4">
+                <div className="h-6 bg-slate-800/50 rounded w-32" />
+                <div className="bg-[#151c2e] rounded-2xl p-8 space-y-4">
                     <div className="flex items-center gap-4">
-                        <div className="w-20 h-20 bg-gray-200 rounded-full" />
+                        <div className="w-20 h-20 bg-slate-800 rounded-full" />
                         <div className="space-y-2 flex-1">
-                            <div className="h-5 bg-gray-200 rounded w-48" />
-                            <div className="h-4 bg-gray-200 rounded w-36" />
+                            <div className="h-5 bg-slate-800 rounded w-48" />
+                            <div className="h-4 bg-slate-800 rounded w-36" />
                         </div>
                     </div>
                     <div className="grid grid-cols-3 gap-4 pt-4">
-                        <div className="h-16 bg-gray-100 rounded-xl" />
-                        <div className="h-16 bg-gray-100 rounded-xl" />
-                        <div className="h-16 bg-gray-100 rounded-xl" />
+                        <div className="h-16 bg-slate-800/50 rounded-xl" />
+                        <div className="h-16 bg-slate-800/50 rounded-xl" />
+                        <div className="h-16 bg-slate-800/50 rounded-xl" />
                     </div>
                 </div>
             </div>
@@ -84,15 +84,15 @@ export default function ProfilePage() {
         <div className="max-w-2xl mx-auto space-y-6">
             <button
                 onClick={() => navigate('/dashboard')}
-                className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                className="inline-flex items-center text-sm text-slate-500 hover:text-slate-300 transition-colors btn-tactile"
             >
                 <ArrowLeft className="w-4 h-4 mr-1" /> Back to Dashboard
             </button>
 
-            <h1 className="text-2xl font-bold text-gray-900">Profile & Settings</h1>
+            <h1 className="text-2xl font-bold text-slate-100">Profile & Settings</h1>
 
             {/* Profile Card */}
-            <div className="bg-white shadow-sm rounded-2xl border border-gray-100 overflow-hidden">
+            <div className="bg-[#151c2e] shadow-sm rounded-2xl border border-indigo-500/10 overflow-hidden">
                 <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-8">
                     <div className="flex items-center gap-4">
                         <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-white/30">
@@ -122,55 +122,55 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-3 divide-x divide-gray-100 border-b border-gray-100">
+                <div className="grid grid-cols-3 divide-x divide-white/5 border-b border-white/5">
                     <div className="p-4 text-center">
-                        <Package className="w-5 h-5 text-indigo-500 mx-auto mb-1" />
-                        <p className="text-xl font-bold text-gray-900">{profile.productCount}</p>
-                        <p className="text-xs text-gray-500">Products</p>
+                        <Package className="w-5 h-5 text-indigo-400 mx-auto mb-1" />
+                        <p className="text-xl font-bold text-slate-100">{profile.productCount}</p>
+                        <p className="text-xs text-slate-500">Products</p>
                     </div>
                     <div className="p-4 text-center">
-                        <Bell className="w-5 h-5 text-amber-500 mx-auto mb-1" />
-                        <p className="text-xl font-bold text-gray-900">{profile.notificationCount}</p>
-                        <p className="text-xs text-gray-500">Notifications</p>
+                        <Bell className="w-5 h-5 text-amber-400 mx-auto mb-1" />
+                        <p className="text-xl font-bold text-slate-100">{profile.notificationCount}</p>
+                        <p className="text-xs text-slate-500">Notifications</p>
                     </div>
                     <div className="p-4 text-center">
-                        <Shield className="w-5 h-5 text-emerald-500 mx-auto mb-1" />
-                        <p className="text-xl font-bold text-gray-900">Pro</p>
-                        <p className="text-xs text-gray-500">Plan</p>
+                        <Shield className="w-5 h-5 text-emerald-400 mx-auto mb-1" />
+                        <p className="text-xl font-bold text-slate-100">Pro</p>
+                        <p className="text-xs text-slate-500">Plan</p>
                     </div>
                 </div>
 
                 {/* Details */}
                 <div className="p-6 space-y-4">
                     <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">City</label>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">City</label>
                         {editing ? (
                             <input
                                 type="text"
                                 value={editCity}
                                 onChange={e => setEditCity(e.target.value)}
-                                className="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-indigo-500"
+                                className="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500/50 transition-all hover:border-white/20"
                             />
                         ) : (
-                            <p className="text-sm text-gray-900 flex items-center gap-1">
-                                <MapPin className="w-4 h-4 text-gray-400" /> {profile.city || 'Mumbai'}
+                            <p className="text-sm text-slate-200 flex items-center gap-1">
+                                <MapPin className="w-4 h-4 text-slate-500" /> {profile.city || 'Mumbai'}
                             </p>
                         )}
                     </div>
 
                     <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Notification Preferences</label>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Notification Preferences</label>
                         <div className="space-y-2">
-                            <label className="flex items-center gap-2 text-sm text-gray-700">
-                                <input type="checkbox" defaultChecked className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                            <label className="flex items-center gap-2 text-sm text-slate-300">
+                                <input type="checkbox" defaultChecked className="rounded border-white/20 bg-white/5 text-indigo-600 focus:ring-indigo-500" />
                                 Email reminders (30 days before expiry)
                             </label>
-                            <label className="flex items-center gap-2 text-sm text-gray-700">
-                                <input type="checkbox" defaultChecked className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                            <label className="flex items-center gap-2 text-sm text-slate-300">
+                                <input type="checkbox" defaultChecked className="rounded border-white/20 bg-white/5 text-indigo-600 focus:ring-indigo-500" />
                                 Email reminders (7 days before expiry)
                             </label>
-                            <label className="flex items-center gap-2 text-sm text-gray-700">
-                                <input type="checkbox" defaultChecked className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                            <label className="flex items-center gap-2 text-sm text-slate-300">
+                                <input type="checkbox" defaultChecked className="rounded border-white/20 bg-white/5 text-indigo-600 focus:ring-indigo-500" />
                                 AI claim suggestions
                             </label>
                         </div>
@@ -178,20 +178,20 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Actions */}
-                <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex gap-3">
+                <div className="px-6 py-4 border-t border-white/5 bg-white/[0.02] flex gap-3">
                     {editing ? (
                         <>
                             <button
                                 onClick={handleSave}
                                 disabled={saving}
-                                className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                                className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-medium rounded-lg hover:from-indigo-500 hover:to-purple-500 transition-all disabled:opacity-50 btn-tactile"
                             >
                                 {saving ? <Loader className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                                 Save
                             </button>
                             <button
                                 onClick={() => { setEditing(false); setEditName(profile.name); setEditCity(profile.city || 'Mumbai'); }}
-                                className="px-4 py-2 bg-white border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                                className="px-4 py-2 bg-white/5 border border-white/10 text-sm font-medium rounded-lg text-slate-400 hover:bg-white/10 hover:text-slate-200 transition-all btn-tactile"
                             >
                                 Cancel
                             </button>
@@ -199,7 +199,7 @@ export default function ProfilePage() {
                     ) : (
                         <button
                             onClick={() => setEditing(true)}
-                            className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                            className="inline-flex items-center px-4 py-2 bg-white/5 border border-white/10 text-sm font-medium rounded-lg text-slate-300 hover:bg-white/10 transition-all btn-tactile"
                         >
                             <User className="w-4 h-4 mr-2 text-indigo-500" /> Edit Profile
                         </button>
