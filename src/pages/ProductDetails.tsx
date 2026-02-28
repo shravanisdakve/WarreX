@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
-import { Calendar, FileText, Phone, Mail, Globe, Bell, Trash2, Edit2, Save, X, ShieldCheck, ShieldAlert, ShieldX, ArrowLeft, Wand2, Sparkles, AlertTriangle, Activity, Clock, CheckCircle, Send, Brain, TrendingUp, IndianRupee, Loader, MapPin } from 'lucide-react';
+import { Mail, Globe, Bell, Trash2, Edit2, Save, X, ShieldCheck, ShieldAlert, ShieldX, ArrowLeft, Wand2, Sparkles, AlertTriangle, Activity, Clock, CheckCircle, Send, Brain, TrendingUp, IndianRupee, Loader, MapPin, Phone, FileText } from 'lucide-react';
 import { format, parseISO, differenceInDays, addMonths } from 'date-fns';
+import { motion } from 'motion/react';
 
 interface Product {
   id: number;
@@ -257,16 +258,22 @@ export default function ProductDetails() {
   const progress = Math.min(Math.max((usedDays / totalDays) * 100, 0), 100);
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -15 }}
+      transition={{ duration: 0.3 }}
+      className="max-w-3xl mx-auto space-y-6"
+    >
       <button
         onClick={() => navigate('/dashboard')}
-        className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 transition-colors"
+        className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-indigo-600 transition-all hover:-translate-x-1"
       >
         <ArrowLeft className="w-4 h-4 mr-1" /> Back to Dashboard
       </button>
 
       {/* Header Card */}
-      <div className="bg-white shadow-sm rounded-2xl border border-gray-100 overflow-hidden">
+      <div className="bg-white/80 backdrop-blur-xl shadow-md rounded-2xl border border-gray-200/60 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
         <div className="px-6 py-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-2xl">
@@ -322,9 +329,9 @@ export default function ProductDetails() {
               value={claimStatus}
               onChange={(e) => handleClaimStatusUpdate(e.target.value)}
               className={`border rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${claimStatus === 'SUCCESSFUL' ? 'border-emerald-300 bg-emerald-50 text-emerald-700' :
-                  claimStatus === 'REJECTED' ? 'border-red-300 bg-red-50 text-red-700' :
-                    claimStatus === 'PENDING' ? 'border-amber-300 bg-amber-50 text-amber-700' :
-                      'border-gray-300 bg-white text-gray-600'
+                claimStatus === 'REJECTED' ? 'border-red-300 bg-red-50 text-red-700' :
+                  claimStatus === 'PENDING' ? 'border-amber-300 bg-amber-50 text-amber-700' :
+                    'border-gray-300 bg-white text-gray-600'
                 }`}
             >
               {CLAIM_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
@@ -418,30 +425,30 @@ export default function ProductDetails() {
               </>
             )}
 
-            <button onClick={handleTestReminder} className="inline-flex items-center px-4 py-2 border border-gray-200 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+            <button onClick={handleTestReminder} className="inline-flex items-center px-4 py-2 border border-gray-200 shadow-sm text-sm font-semibold rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:shadow-md active:scale-95 transition-all">
               <Bell className="w-4 h-4 mr-2 text-amber-500" /> Test Reminder
             </button>
 
-            <button onClick={() => { setShowIssuePrompt(true); }} disabled={generatingClaim} className="inline-flex items-center px-4 py-2 border border-gray-200 shadow-sm text-sm font-medium rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors disabled:opacity-50">
+            <button onClick={() => { setShowIssuePrompt(true); }} disabled={generatingClaim} className="inline-flex items-center px-4 py-2 border border-indigo-200 shadow-sm text-sm font-semibold rounded-xl text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:shadow-md active:scale-95 transition-all disabled:opacity-50">
               <Wand2 className="w-4 h-4 mr-2" /> {generatingClaim ? 'Generating...' : 'Generate Claim Email'}
             </button>
 
             {editing ? (
               <>
-                <button onClick={handleSave} disabled={saving} className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50">
+                <button onClick={handleSave} disabled={saving} className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-semibold rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 hover:shadow-md active:scale-95 transition-all disabled:opacity-50">
                   <Save className="w-4 h-4 mr-2" /> {saving ? 'Saving...' : 'Save Changes'}
                 </button>
-                <button onClick={() => { setEditing(false); setEditData(product); }} className="inline-flex items-center px-4 py-2 border border-gray-200 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+                <button onClick={() => { setEditing(false); setEditData(product); }} className="inline-flex items-center px-4 py-2 border border-gray-200 shadow-sm text-sm font-semibold rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:shadow-md active:scale-95 transition-all">
                   <X className="w-4 h-4 mr-2" /> Cancel
                 </button>
               </>
             ) : (
-              <button onClick={() => setEditing(true)} className="inline-flex items-center px-4 py-2 border border-gray-200 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+              <button onClick={() => setEditing(true)} className="inline-flex items-center px-4 py-2 border border-gray-200 shadow-sm text-sm font-semibold rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:shadow-md active:scale-95 transition-all">
                 <Edit2 className="w-4 h-4 mr-2 text-indigo-500" /> Edit
               </button>
             )}
 
-            <button onClick={handleDelete} className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 ml-auto transition-colors">
+            <button onClick={handleDelete} className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-semibold rounded-xl text-white bg-red-600 hover:bg-red-700 hover:shadow-md active:scale-95 ml-auto transition-all">
               <Trash2 className="w-4 h-4 mr-2" /> Delete
             </button>
           </div>
@@ -520,7 +527,7 @@ export default function ProductDetails() {
       </div>
 
       {/* AI Risk Assessment */}
-      <div className="bg-white shadow-sm rounded-2xl border border-gray-100 overflow-hidden">
+      <div className="bg-white/80 backdrop-blur-xl shadow-md rounded-2xl border border-gray-200/60 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <h4 className="text-base font-bold text-gray-900 flex items-center gap-2">
             <Brain className="w-5 h-5 text-purple-600" /> AI Risk Assessment
@@ -613,7 +620,7 @@ export default function ProductDetails() {
 
       {/* Service Centers */}
       {serviceInfo?.centers && serviceInfo.centers.length > 0 && (
-        <div className="bg-white shadow-sm rounded-2xl border border-gray-100 overflow-hidden">
+        <div className="bg-white/80 backdrop-blur-xl shadow-md rounded-2xl border border-gray-200/60 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
           <div className="px-6 py-4 border-b border-gray-100">
             <h4 className="text-base font-bold text-gray-900 flex items-center gap-2">
               <MapPin className="w-5 h-5 text-emerald-600" /> Nearby Service Centers
@@ -631,7 +638,7 @@ export default function ProductDetails() {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }
 
@@ -650,7 +657,7 @@ function ActionButton({ href, icon, label, isExternal }: { href: string; icon: R
       href={href}
       target={isExternal ? '_blank' : undefined}
       rel={isExternal ? 'noopener noreferrer' : undefined}
-      className="inline-flex items-center px-4 py-2 border border-gray-200 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+      className="inline-flex items-center px-4 py-2 border border-gray-200 shadow-sm text-sm font-semibold rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:shadow-md active:scale-95 transition-all"
     >
       {icon}
       <span className="ml-2">{label}</span>

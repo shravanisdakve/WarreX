@@ -147,7 +147,7 @@ export default function Assistant() {
                 key={i}
                 onClick={() => sendMessage(action.message)}
                 disabled={isLoading}
-                className="text-xs px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-full hover:bg-indigo-100 transition-colors disabled:opacity-50 border border-indigo-100"
+                className="text-xs font-semibold px-4 py-2 bg-indigo-50/80 text-indigo-700 rounded-full hover:bg-indigo-100 hover:shadow-md hover:-translate-y-0.5 active:scale-95 transition-all disabled:opacity-50 border border-indigo-100/50"
               >
                 {action.label}
               </button>
@@ -172,7 +172,7 @@ export default function Assistant() {
         <button
           type="submit"
           disabled={isLoading || !input.trim()}
-          className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-2.5 rounded-full hover:from-indigo-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-2.5 rounded-full shadow-md hover:from-indigo-700 hover:to-purple-700 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
         >
           <Send className="w-5 h-5" />
         </button>

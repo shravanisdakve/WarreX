@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import Tesseract from 'tesseract.js';
+
 import { useTranslation } from 'react-i18next';
+import { motion } from 'motion/react';
 import { Upload, Save, Loader, Sparkles, FileText, X, AlertTriangle } from 'lucide-react';
 import { addMonths, format, parse, isValid } from 'date-fns';
 
@@ -140,7 +141,7 @@ export default function AddProduct() {
       const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp'];
       if (!allowedTypes.includes(file.type)) {
         if (file.type === 'application/pdf') {
-          alert('PDF support is coming in the next update! For now, please use an image format (JPEG/PNG) to enable AI detection.');
+          alert('Invalid file format. Please upload an image format (JPEG/PNG) to enable AI detection.');
         } else {
           alert('Invalid file format. Please upload an image.');
         }
@@ -180,6 +181,7 @@ export default function AddProduct() {
     setOcrProgress(0);
     setOcrHighlights([]);
     try {
+      const Tesseract = (await import('tesseract.js')).default;
       const result = await Tesseract.recognize(
         file,
         'eng',
@@ -325,15 +327,21 @@ export default function AddProduct() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100">
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -15 }}
+      transition={{ duration: 0.3 }}
+      className="max-w-2xl mx-auto"
+    >
+      <div className="bg-white/80 backdrop-blur-xl p-8 rounded-2xl shadow-lg border border-gray-200/60 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
         <h1 className="text-2xl font-bold mb-6 text-gray-900">{t('add_product')}</h1>
 
         {/* Upload Area */}
         <div className="mb-8 p-6 border-2 border-dashed border-indigo-200 rounded-xl text-center bg-gradient-to-b from-indigo-50/50 to-white transition-colors hover:border-indigo-300">
           <Upload className="mx-auto h-10 w-10 text-indigo-400" />
-          <div className="mt-4">
-            <label htmlFor="file-upload" className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">
+          <div className="mt-4 flex flex-col items-center">
+            <label htmlFor="file-upload" className="cursor-pointer inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold shadow-md hover:bg-indigo-700 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all">
               <Sparkles className="w-4 h-4" />
               <span>{t('upload_invoice')}</span>
               <input id="file-upload" name="file-upload" type="file" className="sr-only" ref={fileInputRef} onChange={handleFileChange} accept="image/*" />
@@ -353,8 +361,18 @@ export default function AddProduct() {
           )}
 
           {previewUrl && (
-            <div className="mt-4">
-              <img src={previewUrl} alt="Invoice preview" className="max-h-32 mx-auto rounded-lg shadow-sm border" />
+            <div className={`mt-4 relative inline-block rounded-lg shadow-sm border overflow-hidden ${ocrProcessing ? 'border-green-400' : 'border-gray-200'}`}>
+              <img src={previewUrl} alt="Invoice preview" className="max-h-32 mx-auto" />
+              {ocrProcessing && (
+                <>
+                  <div className="absolute inset-0 bg-green-500/10 backdrop-blur-[1px]"></div>
+                  <motion.div
+                    className="absolute left-0 right-0 h-[2px] bg-green-400 shadow-[0_0_8px_3px_rgba(74,222,128,0.8)]"
+                    animate={{ top: ['0%', '100%', '0%'] }}
+                    transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                  />
+                </>
+              )}
             </div>
           )}
 
@@ -506,18 +524,18 @@ export default function AddProduct() {
             </div>
           </div>
 
-          <div className="flex justify-end pt-2">
+          <div className="flex justify-end pt-4 border-t border-gray-100">
             <button
               type="button"
               onClick={() => navigate('/dashboard')}
-              className="mr-3 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              className="mr-3 px-5 py-2.5 border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 hover:shadow-md hover:border-gray-400 active:scale-95 transition-all"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex items-center px-6 py-2.5 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="inline-flex items-center px-6 py-2.5 border border-transparent shadow-sm text-sm font-semibold rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
             >
               {saving ? (
                 <Loader className="animate-spin w-4 h-4 mr-2" />
@@ -529,6 +547,6 @@ export default function AddProduct() {
           </div>
         </form>
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -2,16 +2,18 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
-import Landing from './pages/Landing';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
-import Dashboard from './pages/Dashboard';
-import AddProduct from './pages/AddProduct';
-import ProductDetails from './pages/ProductDetails';
-import Assistant from './pages/Assistant';
-import Notifications from './pages/Notifications';
-import B2BDashboard from './pages/B2BDashboard';
-import Profile from './pages/Profile';
+import { Suspense, lazy } from 'react';
+
+const Landing = lazy(() => import('./pages/Landing'));
+const Login = lazy(() => import('./pages/Login'));
+const Signup = lazy(() => import('./pages/Signup'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const AddProduct = lazy(() => import('./pages/AddProduct'));
+const ProductDetails = lazy(() => import('./pages/ProductDetails'));
+const Assistant = lazy(() => import('./pages/Assistant'));
+const Notifications = lazy(() => import('./pages/Notifications'));
+const B2BDashboard = lazy(() => import('./pages/B2BDashboard'));
+const Profile = lazy(() => import('./pages/Profile'));
 import './i18n';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -19,7 +21,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-slate-100">
         {/* Loading skeleton */}
         <div className="space-y-4 w-full max-w-md px-6">
           <div className="animate-pulse flex items-center gap-3">
@@ -64,21 +66,27 @@ export default function App() {
   return (
     <AuthProvider>
       <Router>
-        <Routes>
-          <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
+        <Suspense fallback={
+          <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-slate-100">
+            <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        }>
+          <Routes>
+            <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
 
-          <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="add-product" element={<AddProduct />} />
-            <Route path="product/:id" element={<ProductDetails />} />
-            <Route path="assistant" element={<Assistant />} />
-            <Route path="notifications" element={<Notifications />} />
-            <Route path="b2b" element={<B2BDashboard />} />
-            <Route path="profile" element={<Profile />} />
-          </Route>
-        </Routes>
+            <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="add-product" element={<AddProduct />} />
+              <Route path="product/:id" element={<ProductDetails />} />
+              <Route path="assistant" element={<Assistant />} />
+              <Route path="notifications" element={<Notifications />} />
+              <Route path="b2b" element={<B2BDashboard />} />
+              <Route path="profile" element={<Profile />} />
+            </Route>
+          </Routes>
+        </Suspense>
       </Router>
     </AuthProvider>
   );

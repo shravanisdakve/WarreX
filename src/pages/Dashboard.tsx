@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
+import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { Search, AlertTriangle, CheckCircle, Clock, Filter, X, ShieldCheck, ShieldAlert, ShieldX, Sparkles, Activity, Globe, IndianRupee, Brain, Info, TrendingDown, Package } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
@@ -175,10 +176,19 @@ export default function Dashboard() {
   const impact = calculateImpactStats();
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -15 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="space-y-6"
+    >
       {/* AI Insights Card */}
       {aiInsights.length > 0 && (
-        <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-700 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden group">
+        <motion.div
+          whileHover={{ scale: 1.01, y: -2 }}
+          className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-700 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden group hover:shadow-2xl transition-all duration-300"
+        >
           <div className="absolute top-[-20%] right-[-10%] w-48 h-48 bg-white/10 rounded-full blur-3xl" />
           <div className="absolute bottom-[-10%] left-[-5%] w-32 h-32 bg-purple-500/20 rounded-full blur-2xl" />
           <div className="relative z-10">
@@ -197,11 +207,14 @@ export default function Dashboard() {
               ))}
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* Social Impact Score Card */}
-      <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden group">
+      <motion.div
+        whileHover={{ scale: 1.01, y: -2 }}
+        className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden group hover:shadow-2xl transition-all duration-300"
+      >
         <div className="absolute top-[-20%] right-[-10%] w-64 h-64 bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition-all duration-700"></div>
         <div className="absolute bottom-[-10%] left-[-5%] w-48 h-48 bg-emerald-400/20 rounded-full blur-2xl group-hover:bg-emerald-400/30 transition-all duration-700"></div>
 
@@ -291,38 +304,41 @@ export default function Dashboard() {
           </div>
         </div>
         <ShieldCheck className="absolute right-4 top-1/2 -translate-y-1/2 w-48 h-48 text-white/5 -rotate-12 pointer-events-none group-hover:scale-110 group-hover:text-white/10 transition-all duration-700" />
-      </div>
+      </motion.div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-        <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+        <motion.div whileHover={{ y: -4, scale: 1.02 }} className="bg-white/70 backdrop-blur-md border border-white/20 card-premium rounded-2xl p-4 transition-all duration-300 hover:shadow-xl hover:bg-white/90">
           <p className="text-2xl font-bold text-gray-900">{totalProducts}</p>
-          <p className="text-xs text-gray-500 mt-1">{t('total_products')}</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 border border-emerald-100 shadow-sm">
+          <p className="text-xs text-gray-500 mt-1 font-medium">{t('total_products')}</p>
+        </motion.div>
+        <motion.div whileHover={{ y: -4, scale: 1.02 }} className="bg-white/70 backdrop-blur-md border border-emerald-100/50 card-premium rounded-2xl p-4 transition-all duration-300 hover:shadow-xl hover:bg-emerald-50/90">
           <p className="text-2xl font-bold text-emerald-600">{activeProducts}</p>
-          <p className="text-xs text-gray-500 mt-1">{t('stats_active')}</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 border border-amber-100 shadow-sm">
+          <p className="text-xs text-gray-500 mt-1 font-medium">{t('stats_active')}</p>
+        </motion.div>
+        <motion.div whileHover={{ y: -4, scale: 1.02 }} className="bg-white/70 backdrop-blur-md border border-amber-100/50 card-premium rounded-2xl p-4 transition-all duration-300 hover:shadow-xl hover:bg-amber-50/90">
           <p className="text-2xl font-bold text-amber-600">{expiringProducts}</p>
-          <p className="text-xs text-gray-500 mt-1">{t('expiring_soon')}</p>
-        </div>
-        <button
+          <p className="text-xs text-gray-500 mt-1 font-medium">{t('expiring_soon')}</p>
+        </motion.div>
+        <motion.button
           onClick={() => expiredProducts > 0 && setShowMissedClaims(true)}
-          className="bg-white rounded-xl p-4 border border-red-100 shadow-sm text-left hover:bg-red-50 transition-colors cursor-pointer"
+          transition={{ type: "spring", stiffness: 300 }}
+          whileHover={{ y: -4, scale: 1.02 }}
+          whileTap={{ scale: 0.95 }}
+          className="bg-white/70 backdrop-blur-md border border-red-100/50 card-premium rounded-2xl p-4 text-left hover:bg-red-50/90 transition-all duration-300 hover:shadow-xl cursor-pointer group"
         >
           <p className="text-2xl font-bold text-red-600">{expiredProducts}</p>
-          <p className="text-xs text-gray-500 mt-1">{t('expired')}</p>
-          {expiredProducts > 0 && <p className="text-[10px] text-red-400 mt-0.5">Click for details →</p>}
-        </button>
+          <p className="text-xs text-gray-500 mt-1 font-medium">{t('expired')}</p>
+          {expiredProducts > 0 && <p className="text-[10px] text-red-500 mt-0.5 group-hover:translate-x-1 transition-transform inline-block font-semibold">Click for details &rarr;</p>}
+        </motion.button>
         {/* ₹ Savings Tracker */}
-        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-100 shadow-sm">
+        <motion.div whileHover={{ y: -4, scale: 1.02 }} className="bg-indigo-50/70 backdrop-blur-md border border-indigo-100/50 card-premium rounded-2xl p-4 transition-all duration-300 hover:shadow-xl hover:bg-indigo-100/90">
           <div className="flex items-center gap-1">
             <IndianRupee className="w-4 h-4 text-indigo-600" />
             <p className="text-2xl font-bold text-indigo-600">{protectedValue > 0 ? `${(protectedValue / 1000).toFixed(0)}K` : '0'}</p>
           </div>
           <p className="text-xs text-indigo-500 mt-1 font-medium">Protected Value</p>
-        </div>
+        </motion.div>
       </div>
 
       {/* Missed Claims Modal */}
@@ -367,93 +383,101 @@ export default function Dashboard() {
       )}
 
       {/* Search & Filter Bar */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <h1 className="text-2xl font-bold text-gray-900">{t('dashboard')}</h1>
-        <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
-          <div className="relative flex-1 sm:flex-none">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{t('dashboard')}</h1>
+        <div className="flex items-center gap-3 w-full sm:w-auto flex-wrap">
+          <div className="relative flex-1 sm:flex-none group">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
             <input
               id="search"
               name="search"
               type="text"
               aria-label={t('search_placeholder')}
               placeholder={t('search_placeholder')}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-full sm:w-64 text-sm"
+              className="pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 w-full sm:w-64 text-sm bg-white/50 backdrop-blur-sm transition-all shadow-sm hover:shadow hover:bg-white active:scale-[0.99]"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => setExpiringSoon(!expiringSoon)}
-            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${expiringSoon ? 'bg-amber-100 text-amber-800 border border-amber-200 animate-pulse' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-sm hover:shadow-md flex items-center gap-2 ${expiringSoon ? 'bg-amber-100 text-amber-800 border-amber-200 ring-2 ring-amber-400/50 border' : 'bg-white border text-gray-700 hover:bg-gray-50 border-gray-200 hover:text-gray-900'}`}
           >
-            <Clock className="w-4 h-4 inline mr-1" />
+            <Clock className={`w-4 h-4 ${expiringSoon ? 'animate-pulse' : ''}`} />
             {t('expiring_soon')}
-          </button>
-          <button
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => setShowFilters(!showFilters)}
-            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${showFilters || hasActiveFilters ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-sm hover:shadow-md flex items-center gap-2 ${showFilters || hasActiveFilters ? 'bg-indigo-100 text-indigo-800 border-indigo-200 ring-2 ring-indigo-400/50 border' : 'bg-white border text-gray-700 hover:bg-gray-50 border-gray-200 hover:text-gray-900'}`}
           >
-            <Filter className="w-4 h-4 inline mr-1" />
+            <Filter className="w-4 h-4" />
             Filters
-            {hasActiveFilters && <span className="ml-1 px-1.5 py-0.5 bg-indigo-600 text-white text-xs rounded-full">!</span>}
-          </button>
+            {hasActiveFilters && <span className="px-1.5 py-0.5 bg-indigo-600 text-white text-[10px] rounded-full font-bold shadow-sm">!</span>}
+          </motion.button>
         </div>
       </div>
 
       {/* Expanded Filters */}
-      {showFilters && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+      <motion.div
+        initial={false}
+        animate={{ height: showFilters ? 'auto' : 0, opacity: showFilters ? 1 : 0 }}
+        className="overflow-hidden"
+      >
+        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm mb-4">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-medium text-gray-700">Advanced Filters</p>
             {hasActiveFilters && (
-              <button onClick={clearFilters} className="text-xs text-red-600 hover:text-red-700 flex items-center gap-1">
+              <button onClick={clearFilters} className="text-xs text-red-600 hover:text-red-700 flex items-center gap-1 font-medium hover:bg-red-50 px-2 py-1 rounded transition-colors">
                 <X className="w-3 h-3" /> Clear all
               </button>
             )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label htmlFor="category" className="block text-xs text-gray-500 mb-1">Category</label>
+              <label htmlFor="category" className="block text-xs font-semibold text-gray-600 mb-1">Category</label>
               <select
                 id="category"
                 name="category"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow hover:border-gray-400"
               >
                 {CATEGORIES.map(c => <option key={c} value={c}>{c === 'all' ? 'All Categories' : c}</option>)}
               </select>
             </div>
             <div>
-              <label htmlFor="dateFrom" className="block text-xs text-gray-500 mb-1">Purchased From</label>
+              <label htmlFor="dateFrom" className="block text-xs font-semibold text-gray-600 mb-1">Purchased From</label>
               <input
                 id="dateFrom"
                 name="dateFrom"
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow hover:border-gray-400"
               />
             </div>
             <div>
-              <label htmlFor="dateTo" className="block text-xs text-gray-500 mb-1">Purchased To</label>
+              <label htmlFor="dateTo" className="block text-xs font-semibold text-gray-600 mb-1">Purchased To</label>
               <input
                 id="dateTo"
                 name="dateTo"
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow hover:border-gray-400"
               />
             </div>
           </div>
         </div>
-      )}
+      </motion.div>
 
       {/* Product List */}
-      <div className="bg-white shadow-sm overflow-hidden rounded-xl border border-gray-100">
-        <ul className="divide-y divide-gray-100">
+      <div className="bg-white/80 backdrop-blur-xl border border-gray-200/60 shadow-lg rounded-2xl overflow-visible">
+        <ul className="divide-y divide-gray-100/50">
           {products.length === 0 ? (
             <li className="px-6 py-16 text-center">
               <ShieldCheck className="w-12 h-12 mx-auto text-gray-300 mb-4" />
@@ -463,16 +487,23 @@ export default function Dashboard() {
               </Link>
             </li>
           ) : (
-            products.map((product) => {
+            products.map((product, i) => {
               const status = getStatus(product.expiry_date);
               const risk = getRiskScore(product, t);
               return (
-                <li key={product.id}>
-                  <Link to={`/product/${product.id}`} className="block hover:bg-gray-50 transition-colors">
-                    <div className="px-5 py-4">
+                <motion.li
+                  key={product.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05, type: "spring", stiffness: 300 }}
+                  whileHover={{ scale: 1.01, zIndex: 10 }}
+                  className="relative"
+                >
+                  <Link to={`/product/${product.id}`} className="block hover:bg-gray-50/80 transition-all duration-200">
+                    <div className="px-5 py-4 group">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center text-lg">
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 flex items-center justify-center text-xl shadow-sm group-hover:scale-110 group-hover:shadow-md transition-all duration-300">
                             {BRAND_LOGOS[product.brand] || '📦'}
                           </div>
                           <div className="min-w-0">
@@ -503,12 +534,12 @@ export default function Dashboard() {
                       </div>
                     </div>
                   </Link>
-                </li>
+                </motion.li>
               );
             })
           )}
         </ul>
       </div>
-    </div>
+    </motion.div>
   );
 }
