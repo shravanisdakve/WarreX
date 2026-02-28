@@ -175,18 +175,23 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 });
 
 // ── Product Routes ───────────────────────────────────────────────────
-app.get('/api/products/check-invoice', authenticateToken, (req: any, res) => {
+// Check invoice number for duplicates (Global check for demo purposes)
+app.get('/api/products/check-invoice', (req: any, res) => {
   try {
     const { invoiceNumber } = req.query;
+    console.log(`[DUPE_CHECK] Checking: ${invoiceNumber}`);
     if (!invoiceNumber) return res.json({ exists: false });
 
-    // For hackathon/demo purposes, we check globally to avoid confusing judges
     const stmt = db.prepare('SELECT id, product_name FROM products WHERE invoice_number = ? LIMIT 1');
     const existing = stmt.get(invoiceNumber) as any;
 
+    if (existing) {
+      console.log(`[DUPE_CHECK] Found duplicate: ${existing.product_name}`);
+    }
+
     res.json({ exists: !!existing, productName: existing?.product_name });
   } catch (error) {
-    console.error('[ERROR] Check invoice failed:', error);
+    console.error('[DUPE_CHECK] Error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -468,13 +473,12 @@ Instructions:
 function generateFallbackResponse(query: string, products: any[], userName: string): string {
   const q = query.toLowerCase();
 
-  // 1. Complaint email (TOP PRIORITY - triggered by button OR keywords)
-  if (q.includes('[draft_email]') || q.includes('complaint') || q.includes('email') || q.includes('write a draft')) {
+  // 1. Complaint email (TOP PRIORITY)
+  if (q.includes('draft_email') || q.includes('complaint') || q.includes('claim')) {
     const product = products.find(p =>
       q.includes(p.product_name.toLowerCase()) ||
-      (p.brand && q.includes(p.brand.toLowerCase())) ||
-      q.includes('[draft_email]') // If triggered via button, first product is often the one
-    );
+      (p.brand && q.includes(p.brand.toLowerCase()))
+    ) || products[0];
     if (product) {
       return `Subject: Warranty Service Request – ${product.product_name}${product.invoice_number ? ' (Inv: ' + product.invoice_number + ')' : ''}
 

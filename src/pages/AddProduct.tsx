@@ -106,30 +106,30 @@ export default function AddProduct() {
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
 
   useEffect(() => {
-    if (formData.invoiceNumber && formData.invoiceNumber.trim().length > 2) {
+    const inv = formData.invoiceNumber?.trim() || '';
+    if (inv.length > 2) {
       const checkDupe = async () => {
         try {
-          const inv = formData.invoiceNumber.trim();
-          console.log(`[DEBUG] Checking duplicate for: ${inv}`);
-          const res = await axios.get(`/api/products/check-invoice?invoiceNumber=${encodeURIComponent(inv)}`, {
-            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-          });
+          console.log(`[DEBUG] Firing API check for: ${inv}`);
+          const res = await axios.get(`/api/products/check-invoice?invoiceNumber=${encodeURIComponent(inv)}`);
+          console.log('[DEBUG] API Response:', res.data);
           if (res.data.exists) {
-            setDuplicateWarning(`Warning: This invoice number is already registered for product "${res.data.productName || 'Unknown'}".`);
-            console.log('[DEBUG] Duplicate found!');
+            setDuplicateWarning(`Warning: Already registered for "${res.data.productName}".`);
           } else {
             setDuplicateWarning(null);
           }
         } catch (e) {
-          console.error('[DEBUG] Check invoice failed:', e);
+          console.error('[DEBUG] API Error:', e);
         }
       };
-      const timeoutId = setTimeout(checkDupe, 500);
-      return () => clearTimeout(timeoutId);
+      const timer = setTimeout(checkDupe, 600);
+      return () => clearTimeout(timer);
     } else {
       setDuplicateWarning(null);
     }
   }, [formData.invoiceNumber]);
+
+  console.log(`[RENDER] Invoice: "${formData.invoiceNumber}", Warning: ${!!duplicateWarning}`);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
