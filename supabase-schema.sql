@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
   name TEXT NOT NULL,
   email TEXT UNIQUE NOT NULL,
   city TEXT DEFAULT 'Mumbai',
+  preferences JSONB DEFAULT '{"rem_30": true, "rem_7": true, "ai_sugg": true}'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

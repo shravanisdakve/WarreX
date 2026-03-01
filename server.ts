@@ -1,3 +1,4 @@
+// Warrify Server - Proactive Warranty Management
 import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 dotenv.config(); // Fallback to .env
@@ -16,6 +17,18 @@ import { GoogleGenAI } from '@google/genai';
 import axios from 'axios';
 import { createClient } from '@supabase/supabase-js';
 import admin from 'firebase-admin';
+import {
+  serviceDirectory,
+  commonFailures,
+  getCommonFailures,
+  buildSystemPrompt,
+  generateFallbackResponse,
+  RISK_THRESHOLDS,
+  RECOMMENDATIONS,
+  RISK_CATEGORIES,
+  REPAIR_COST_FACTORS,
+  RESALE_VALUE_CONSTANTS
+} from './config/businessRules.js';
 
 // Setup __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -59,7 +72,11 @@ if (!admin.apps.length) {
 }
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
+
+app.get('/api/ping', (req, res) => {
+  res.json({ status: 'alive', version: '2.0.2-debug' });
+});
 
 // ── Security Middleware ──────────────────────────────────────────────
 // Set UTF-8 encoding for all responses to prevent garbled Hindi/Marathi text
@@ -76,8 +93,8 @@ app.use(helmet({
 
 // CORS – strictly lock to the application origin for real-product security
 const allowedOrigins = [
-  'http://localhost:3000',
-  process.env.APP_URL || 'http://localhost:3000'
+  ...((process.env.CORS_ORIGINS || '').split(',')),
+  process.env.APP_URL || ''
 ].filter(Boolean);
 
 app.use(cors({
@@ -96,8 +113,8 @@ app.use(express.json({ limit: '5mb' }));
 
 // Rate limiting for auth routes (prevent brute-force)
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // 20 attempts per window
+  windowMs: Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
+  max: Number(process.env.AUTH_RATE_LIMIT_MAX) || 20,
   message: { error: 'Too many attempts, please try again after 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -105,8 +122,8 @@ const authLimiter = rateLimit({
 
 // Global API rate limiter
 const apiLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 100, // 100 requests per minute
+  windowMs: Number(process.env.API_RATE_LIMIT_WINDOW_MS) || 1 * 60 * 1000,
+  max: Number(process.env.API_RATE_LIMIT_MAX) || 100,
   message: { error: 'Too many requests. Please slow down.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -163,6 +180,16 @@ app.post('/api/auth/sync-user', authLimiter, async (req: any, res) => {
       .single();
 
     if (existing) {
+      // If the explicit sign-up call sends a custom name after updateProfile, update the DB
+      if (name) {
+        const { data: updated } = await supabase
+          .from('users')
+          .update({ name })
+          .eq('firebase_uid', decoded.uid)
+          .select('id, name, email, city')
+          .single();
+        if (updated) return res.json({ user: updated });
+      }
       return res.json({ user: existing });
     }
 
@@ -178,6 +205,14 @@ app.post('/api/auth/sync-user', authLimiter, async (req: any, res) => {
       .single();
 
     if (error) {
+      if (error.code === '23505') { // Unique violation (race condition handled)
+        const { data: retryExisting } = await supabase
+          .from('users')
+          .select('id, name, email, city')
+          .eq('firebase_uid', decoded.uid)
+          .single();
+        if (retryExisting) return res.status(200).json({ user: retryExisting });
+      }
       console.error('[SYNC] Supabase insert error:', error);
       return res.status(500).json({ error: 'Failed to create user' });
     }
@@ -191,8 +226,8 @@ app.post('/api/auth/sync-user', authLimiter, async (req: any, res) => {
 
 // Rate limiter for duplicate checks (Prevents brute force discovery)
 const dupeCheckLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 20,
+  windowMs: Number(process.env.API_RATE_LIMIT_WINDOW_MS) || 60 * 1000,
+  max: 20, // Keep this relatively tight
   message: { error: "Too many checks. Please wait." }
 });
 
@@ -357,6 +392,56 @@ app.get('/api/products/:id', authenticateToken, async (req: any, res) => {
   }
 });
 
+// ── Combined Product Details (product + risk + service in one call) ──
+app.get('/api/products/:id/full', authenticateToken, async (req: any, res) => {
+  try {
+    const { data: product, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', req.params.id)
+      .eq('user_id', req.user.id)
+      .single();
+
+    if (error || !product) return res.status(404).json({ error: 'Product not found' });
+
+    // Compute risk assessment inline (no extra DB call)
+    const daysLeft = Math.ceil((new Date(product.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    const totalDays = Math.ceil((new Date(product.expiry_date).getTime() - new Date(product.purchase_date).getTime()) / (1000 * 60 * 60 * 24));
+    const usedPercent = Math.round(((totalDays - daysLeft) / totalDays) * 100);
+    const failures = getCommonFailures(product.category, product.product_name);
+
+    let failureProbability = 10;
+    const matchedThreshold = RISK_THRESHOLDS.find((t: any) =>
+      (t.daysLimit !== undefined && daysLeft < t.daysLimit) ||
+      (t.usedPercentLimit !== undefined && usedPercent > t.usedPercentLimit)
+    );
+    if (matchedThreshold) failureProbability = matchedThreshold.probability || failureProbability;
+    if (RISK_CATEGORIES.includes(product.category)) failureProbability = Math.min(95, failureProbability + 10);
+
+    const baseRepairCost = product.purchase_price ? product.purchase_price * REPAIR_COST_FACTORS.BASE_PERCENTAGE : REPAIR_COST_FACTORS.DEFAULT_BASE_COST;
+    const estimatedRepairCost = Math.round(baseRepairCost * (1 + failureProbability / 100));
+    const monthsLeft = Math.max(0, daysLeft / 30);
+    const resale = estimateResaleValue(product.purchase_price || 0, monthsLeft, product.warranty_months);
+
+    let recommendation = RECOMMENDATIONS.GOOD_SHAPE;
+    if (daysLeft < 0) recommendation = RECOMMENDATIONS.EXPIRED;
+    else if (daysLeft <= 15) recommendation = RECOMMENDATIONS.URGENT(daysLeft, failures);
+    else if (daysLeft <= 30) recommendation = RECOMMENDATIONS.NEAR_EXPIRY(daysLeft, failures);
+    else if (daysLeft <= 90) recommendation = RECOMMENDATIONS.MONITOR(failures);
+
+    const riskAssessment = { failureProbability, commonIssues: failures, estimatedRepairCost, recommendation, resaleValue: resale, daysLeft, usedPercent };
+
+    // Lookup service info (sync, from in-memory directory)
+    const brandKey = Object.keys(serviceDirectory).find(k => k.toLowerCase() === (product.brand || '').toLowerCase());
+    const serviceInfoData = brandKey ? serviceDirectory[brandKey] : null;
+
+    res.json({ product, riskAssessment, serviceInfo: serviceInfoData });
+  } catch (error) {
+    console.error('Combined product fetch error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 app.delete('/api/products/:id', authenticateToken, async (req: any, res) => {
   try {
     // Also delete associated notifications
@@ -375,11 +460,8 @@ app.delete('/api/products/:id', authenticateToken, async (req: any, res) => {
 });
 
 // ── File Upload ──────────────────────────────────────────────────────
-const ALLOWED_MIME_TYPES = [
-  'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp',
-  'application/pdf'
-];
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+const ALLOWED_MIME_TYPES = (process.env.ALLOWED_MIME_TYPES || '').split(',').filter(Boolean);
+const MAX_FILE_SIZE = Number(process.env.MAX_FILE_SIZE_BYTES) || 5 * 1024 * 1024; // Default 5 MB
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -418,82 +500,104 @@ app.post('/api/upload/invoice', authenticateToken, (req: any, res: any) => {
   });
 });
 
-// ── Service Directory ────────────────────────────────────────────────
-const serviceDirectory: Record<string, any> = {
-  "Samsung": { phone: "1800-40-7267864", email: "support@samsung.com", website: "https://www.samsung.com/in/support/", centers: ["Samsung Service Plaza, Andheri West, Mumbai", "Samsung Authorised Centre, Dadar, Mumbai", "Samsung Smart Café, Thane"] },
-  "LG": { phone: "1800-315-9999", email: "support@lg.com", website: "https://www.lg.com/in/support", centers: ["LG Service Center, Goregaon, Mumbai", "LG Authorised Service, Borivali, Mumbai", "LG Care Center, Navi Mumbai"] },
-  "Sony": { phone: "1800-103-7799", email: "support@sony.com", website: "https://www.sony.co.in/support", centers: ["Sony Center, Fort, Mumbai", "Sony Service Hub, Powai, Mumbai"] },
-  "Apple": { phone: "000-800-040-1966", email: "", website: "https://support.apple.com/en-in", centers: ["Apple BKC, Mumbai", "Apple Authorised Service, Andheri, Mumbai"] },
-  "HP": { phone: "1800-108-4747", email: "", website: "https://support.hp.com/in-en", centers: ["HP Service Center, Lower Parel, Mumbai"] },
-  "Dell": { phone: "1800-425-4026", email: "", website: "https://www.dell.com/support/home/en-in", centers: ["Dell Service Center, Andheri, Mumbai"] },
-  "Lenovo": { phone: "1800-419-7555", email: "", website: "https://support.lenovo.com/in/en", centers: ["Lenovo Exclusive Store, Dadar, Mumbai"] },
-  "Whirlpool": { phone: "1800-208-1800", email: "", website: "https://www.whirlpoolindia.com/support", centers: ["Whirlpool Service, Bandra, Mumbai"] },
-  "Bosch": { phone: "1800-266-1880", email: "", website: "https://www.bosch-home.in/support", centers: ["Bosch Home Appliance Service, Worli, Mumbai"] },
-  "OnePlus": { phone: "1800-102-8411", email: "support@oneplus.com", website: "https://www.oneplus.in/support", centers: ["OnePlus Experience Store, Phoenix Mall, Mumbai"] },
-  "Xiaomi": { phone: "1800-103-6286", email: "service.in@xiaomi.com", website: "https://www.mi.com/in/support", centers: ["Mi Service Center, Malad, Mumbai", "Xiaomi Authorised Service, Vashi"] },
-  "Realme": { phone: "1800-102-2777", email: "service@realme.com", website: "https://www.realme.com/in/support", centers: ["Realme Service Center, Ghatkopar, Mumbai"] },
-  "Panasonic": { phone: "1800-103-1333", email: "", website: "https://www.panasonic.com/in/support.html", centers: ["Panasonic Service, Kurla, Mumbai"] },
-  "Godrej": { phone: "1800-209-5511", email: "", website: "https://www.godrej.com/support", centers: ["Godrej Service Hub, Vikhroli, Mumbai"] },
-  "Voltas": { phone: "1800-599-9555", email: "", website: "https://www.voltas.com/contact-us", centers: ["Voltas Service, Thane, Mumbai"] },
-  "Haier": { phone: "1800-200-9999", email: "", website: "https://www.haier.com/in/support/", centers: ["Haier Service Center, Andheri, Mumbai"] },
-  "Asus": { phone: "1800-209-0365", email: "", website: "https://www.asus.com/in/support/", centers: ["Asus Service Center, Lamington Road, Mumbai"] },
-  "Acer": { phone: "1800-115-553", email: "", website: "https://www.acer.com/ac/en/IN/content/support", centers: ["Acer Service Center, Dadar, Mumbai"] },
-};
+// ── Service Directory (DB-backed, hardcoded fallback) ────────────────
+// Common failure data & getCommonFailures – imported from ./config/businessRules.ts
 
-// Common failure data for Claim Intelligence Engine
-const commonFailures: Record<string, Record<string, string[]>> = {
-  "Electronics": {
-    "phone": ["Battery degradation", "Screen flickering", "Charging port issues", "Speaker malfunction"],
-    "laptop": ["Battery swelling", "Keyboard key failure", "Screen backlight bleed", "Hinge wobble"],
-    "headphones": ["Driver unit failure", "Bluetooth connectivity issues", "Cushion deterioration"],
-    "tv": ["Panel dead pixels", "Backlight failure", "HDMI port issues", "Sound board failure"],
-    "default": ["Battery issues", "Component wear", "Connectivity problems"]
-  },
-  "Appliances": {
-    "washing": ["Drum bearing failure", "Water inlet valve", "Door seal deterioration", "Motor capacitor"],
-    "refrigerator": ["Compressor issues", "Thermostat failure", "Defrost heater", "Door seal wear"],
-    "ac": ["Compressor failure", "Gas leakage", "PCB malfunction", "Fan motor issues"],
-    "microwave": ["Magnetron failure", "Door switch issues", "Turntable motor"],
-    "default": ["Motor wear", "Seal deterioration", "Control board issues"]
-  },
-  "Vehicle": {
-    "default": ["Battery failure", "Electrical issues", "Suspension wear", "Brake pad wear"]
-  },
-  "Furniture": {
-    "default": ["Joint loosening", "Surface delamination", "Mechanism failure"]
-  },
-  "default": {
-    "default": ["General wear and tear", "Component degradation"]
-  }
-};
-
-function getCommonFailures(category: string, productName: string): string[] {
-  const catData = commonFailures[category] || commonFailures["default"];
-  const nameLower = productName.toLowerCase();
-
-  for (const [key, failures] of Object.entries(catData)) {
-    if (key !== "default" && nameLower.includes(key)) {
-      return failures;
+// Warranty resale value estimation — reads constants from DB, falls back to config
+async function getResaleConstants(): Promise<{ MIN_AGE_DEPRECIATION: number; MAX_AGE_DEPRECIATION_FACTOR: number; WITHOUT_WARRANTY_FACTOR: number; WARRANTY_PREMIUM_PER_YEAR_FACTOR: number }> {
+  try {
+    const { data } = await supabase.from('app_settings').select('value').eq('key', 'resale_constants').single();
+    if (data?.value) {
+      const v = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+      return {
+        MIN_AGE_DEPRECIATION: v.min_age_depreciation ?? RESALE_VALUE_CONSTANTS.MIN_AGE_DEPRECIATION,
+        MAX_AGE_DEPRECIATION_FACTOR: v.max_age_depreciation_factor ?? RESALE_VALUE_CONSTANTS.MAX_AGE_DEPRECIATION_FACTOR,
+        WITHOUT_WARRANTY_FACTOR: v.without_warranty_factor ?? RESALE_VALUE_CONSTANTS.WITHOUT_WARRANTY_FACTOR,
+        WARRANTY_PREMIUM_PER_YEAR_FACTOR: v.warranty_premium_per_year_factor ?? RESALE_VALUE_CONSTANTS.WARRANTY_PREMIUM_PER_YEAR_FACTOR,
+      };
     }
-  }
-  return catData["default"] || ["General component wear"];
+  } catch { /* fall through */ }
+  return RESALE_VALUE_CONSTANTS;
 }
 
-// Warranty resale value estimation
-function estimateResaleValue(purchasePrice: number, warrantyMonthsLeft: number, totalWarrantyMonths: number): { withWarranty: number, withoutWarranty: number } {
+async function estimateResaleValue(purchasePrice: number, warrantyMonthsLeft: number, totalWarrantyMonths: number): Promise<{ withWarranty: number, withoutWarranty: number }> {
   if (!purchasePrice || purchasePrice <= 0) return { withWarranty: 0, withoutWarranty: 0 };
-
-  const ageDepreciation = Math.max(0.3, 1 - ((totalWarrantyMonths - warrantyMonthsLeft) / totalWarrantyMonths) * 0.5);
-  const withoutWarranty = Math.round(purchasePrice * ageDepreciation * 0.65);
-  const warrantyPremium = Math.round(purchasePrice * 0.08 * (warrantyMonthsLeft / 12));
+  const { MIN_AGE_DEPRECIATION, MAX_AGE_DEPRECIATION_FACTOR, WITHOUT_WARRANTY_FACTOR, WARRANTY_PREMIUM_PER_YEAR_FACTOR } = await getResaleConstants();
+  const ageDepreciation = Math.max(MIN_AGE_DEPRECIATION, 1 - ((totalWarrantyMonths - warrantyMonthsLeft) / totalWarrantyMonths) * MAX_AGE_DEPRECIATION_FACTOR);
+  const withoutWarranty = Math.round(purchasePrice * ageDepreciation * WITHOUT_WARRANTY_FACTOR);
+  const warrantyPremium = Math.round(purchasePrice * WARRANTY_PREMIUM_PER_YEAR_FACTOR * (warrantyMonthsLeft / 12));
   const withWarranty = withoutWarranty + warrantyPremium;
-
   return { withWarranty, withoutWarranty };
 }
 
-app.get('/api/service/:brand', (req, res) => {
-  const brand = req.params.brand;
-  const key = Object.keys(serviceDirectory).find(k => k.toLowerCase() === brand.toLowerCase());
+// ── Metadata Catalog API (Phase 3 – single source of truth) ─────────
+app.get('/api/meta/catalog', async (req, res) => {
+  try {
+    // Fetch all metadata from DB, fall back to hardcoded if tables don't exist yet
+    const [brandsRes, catsRes, warrantyRes, claimRes, settingsRes] = await Promise.all([
+      supabase.from('brands').select('name, logo, phone, email, website').eq('is_active', true).order('sort_order'),
+      supabase.from('categories').select('name, icon').eq('is_active', true).order('sort_order'),
+      supabase.from('warranty_options').select('months').eq('is_active', true).order('sort_order'),
+      supabase.from('claim_statuses').select('value, label').eq('is_active', true).order('sort_order'),
+      supabase.from('app_settings').select('key, value').in('key', ['quick_actions', 'risk_categories', 'platform_version', 'welcome_messages']),
+    ]);
+
+    // Parse app settings into a map
+    const settingsMap: Record<string, any> = {};
+    (settingsRes.data || []).forEach((s: any) => { settingsMap[s.key] = typeof s.value === 'string' ? JSON.parse(s.value) : s.value; });
+
+    // Import hardcoded fallbacks
+    const { BRANDS, CATEGORIES, WARRANTY_MONTH_OPTIONS, CLAIM_STATUSES, BRAND_LOGOS, CATEGORY_ICONS } = await import('./src/constants/productCatalog.js');
+    const { QUICK_ACTIONS } = await import('./src/config/aiConfig.js');
+
+    const catalog = {
+      brands: brandsRes.data && brandsRes.data.length > 0
+        ? brandsRes.data.map((b: any) => ({ name: b.name, logo: b.logo }))
+        : BRANDS.map((name: string) => ({ name, logo: BRAND_LOGOS[name] || '📦' })),
+      categories: catsRes.data && catsRes.data.length > 0
+        ? catsRes.data.map((c: any) => ({ name: c.name, icon: c.icon }))
+        : CATEGORIES.map((name: string) => ({ name, icon: CATEGORY_ICONS[name] || '📦' })),
+      warrantyMonths: warrantyRes.data && warrantyRes.data.length > 0
+        ? warrantyRes.data.map((w: any) => w.months)
+        : [...WARRANTY_MONTH_OPTIONS],
+      claimStatuses: claimRes.data && claimRes.data.length > 0
+        ? claimRes.data.map((s: any) => ({ value: s.value, label: s.label }))
+        : [...CLAIM_STATUSES],
+      quickActions: settingsMap['quick_actions'] || QUICK_ACTIONS,
+      riskCategories: settingsMap['risk_categories'] || RISK_CATEGORIES,
+      platformVersion: settingsMap['platform_version'] || process.env.PLATFORM_VERSION || '',
+      welcomeMessages: settingsMap['welcome_messages'] || {
+        welcome: (await import('./src/config/aiConfig.js')).WELCOME_MESSAGE,
+        welcomeShort: (await import('./src/config/aiConfig.js')).WELCOME_MESSAGE_SHORT
+      },
+    };
+
+    res.json(catalog);
+  } catch (error) {
+    console.error('[META] Failed to fetch catalog:', error);
+    res.status(500).json({ error: 'Failed to fetch metadata catalog' });
+  }
+});
+
+// ── Service Directory API (Phase 4 – DB-backed) ─────────────────────
+app.get('/api/service/:brand', async (req, res) => {
+  const brandName = req.params.brand;
+  try {
+    // Try DB first
+    const { data: brand } = await supabase.from('brands').select('id, name, phone, email, website').ilike('name', brandName).single();
+    if (brand) {
+      const { data: centers } = await supabase.from('service_centers').select('center_name').eq('brand_id', brand.id).eq('is_active', true);
+      return res.json({
+        phone: brand.phone || '',
+        email: brand.email || '',
+        website: brand.website || '',
+        centers: (centers || []).map((c: any) => c.center_name),
+      });
+    }
+  } catch { /* fall through to hardcoded */ }
+
+  // Fallback to hardcoded
+  const key = Object.keys(serviceDirectory).find(k => k.toLowerCase() === brandName.toLowerCase());
   if (key) {
     res.json(serviceDirectory[key]);
   } else {
@@ -501,7 +605,13 @@ app.get('/api/service/:brand', (req, res) => {
   }
 });
 
-app.get('/api/service', (req, res) => {
+app.get('/api/service', async (req, res) => {
+  try {
+    const { data: brands } = await supabase.from('brands').select('name').eq('is_active', true).order('sort_order');
+    if (brands && brands.length > 0) {
+      return res.json(brands.map((b: any) => b.name));
+    }
+  } catch { /* fall through */ }
   res.json(Object.keys(serviceDirectory));
 });
 
@@ -518,41 +628,37 @@ app.get('/api/products/:id/risk-assessment', authenticateToken, async (req: any,
     const failures = getCommonFailures(product.category, product.product_name);
 
     // Calculate failure probability based on age and category
-    let failureProbability = 0;
-    if (daysLeft < 0) {
-      failureProbability = 85;
-    } else if (usedPercent > 80) {
-      failureProbability = 65;
-    } else if (usedPercent > 60) {
-      failureProbability = 40;
-    } else if (usedPercent > 40) {
-      failureProbability = 25;
-    } else {
-      failureProbability = 10;
+    let failureProbability = 10;
+    const matchedThreshold = RISK_THRESHOLDS.find((t: any) =>
+      (t.daysLimit !== undefined && daysLeft < t.daysLimit) ||
+      (t.usedPercentLimit !== undefined && usedPercent > t.usedPercentLimit)
+    );
+    if (matchedThreshold) {
+      failureProbability = matchedThreshold.probability || failureProbability;
     }
 
     // High-value categories have higher failure rates
-    if (["Electronics", "Appliances"].includes(product.category)) {
+    if (RISK_CATEGORIES.includes(product.category)) {
       failureProbability = Math.min(95, failureProbability + 10);
     }
 
     // Estimate repair cost
-    const baseRepairCost = product.purchase_price ? product.purchase_price * 0.3 : 5000;
+    const baseRepairCost = product.purchase_price ? product.purchase_price * REPAIR_COST_FACTORS.BASE_PERCENTAGE : REPAIR_COST_FACTORS.DEFAULT_BASE_COST;
     const estimatedRepairCost = Math.round(baseRepairCost * (1 + failureProbability / 100));
 
     // Resale value
     const monthsLeft = Math.max(0, daysLeft / 30);
-    const resale = estimateResaleValue(product.purchase_price || 0, monthsLeft, product.warranty_months);
+    const resale = await estimateResaleValue(product.purchase_price || 0, monthsLeft, product.warranty_months);
 
-    let recommendation = "Your product is in good shape. Continue regular use.";
+    let recommendation = RECOMMENDATIONS.GOOD_SHAPE;
     if (daysLeft < 0) {
-      recommendation = "Warranty has expired. Consider extended warranty or replacement plans.";
+      recommendation = RECOMMENDATIONS.EXPIRED;
     } else if (daysLeft <= 15) {
-      recommendation = `URGENT: File a preventive claim NOW. Common issues at this age: ${failures.slice(0, 2).join(', ')}. Warranty expires in ${daysLeft} days.`;
+      recommendation = RECOMMENDATIONS.URGENT(daysLeft, failures);
     } else if (daysLeft <= 30) {
-      recommendation = `Schedule a thorough inspection before warranty expires. Watch for: ${failures.slice(0, 2).join(', ')}.`;
+      recommendation = RECOMMENDATIONS.NEAR_EXPIRY(daysLeft, failures);
     } else if (daysLeft <= 90) {
-      recommendation = `Monitor for early signs of ${failures[0]}. Consider filing any pending issues.`;
+      recommendation = RECOMMENDATIONS.MONITOR(failures);
     }
 
     res.json({
@@ -703,22 +809,28 @@ app.post('/api/assistant', authenticateToken, async (req: any, res) => {
       return `- ${p.product_name} (${p.brand || 'No brand'}, ${p.category}): purchased ${p.purchase_date}, warranty ${p.warranty_months} months, expires ${p.expiry_date} (${daysLeft > 0 ? daysLeft + ' days left' : 'EXPIRED ' + Math.abs(daysLeft) + ' days ago'})${p.invoice_number ? ', Invoice#: ' + p.invoice_number : ''}${p.purchase_price ? ', Price: ₹' + p.purchase_price : ''}`;
     }).join('\n');
 
-    const systemPrompt = `You are Warrify AI Advisor – a proactive, intelligent warranty management advisor. 
-Current user: ${req.user.name} (${req.user.email})
-Today's date: ${new Date().toISOString().split('T')[0]}
+    let systemPrompt = '';
+    try {
+      const { data: promptSetting } = await supabase.from('app_settings').select('value').eq('key', 'system_prompt').single();
+      if (promptSetting?.value) {
+        let template = typeof promptSetting.value === 'string' ? JSON.parse(promptSetting.value) : promptSetting.value;
+        systemPrompt = template
+          .replace('{{userName}}', req.user.name)
+          .replace('{{userEmail}}', req.user.email)
+          .replace('{{date}}', new Date().toISOString().split('T')[0])
+          .replace('{{productContext}}', productContext || 'No products registered yet.')
+          .replace('{{availableBrands}}', Object.keys(serviceDirectory).join(', '));
+      }
+    } catch { /* use fallback */ }
 
-User's registered products:
-${productContext || 'No products registered yet.'}
-
-Available service center brands: ${Object.keys(serviceDirectory).join(', ')}
-
-Instructions:
-- Be concise, actionable and helpful. Use bullet points and formatting.
-- When asked about warranty status, provide detailed analysis with days remaining.
-- When asked about service centers, provide the contact info AND nearby service center locations.
-- When asked to draft a claim email, write a HIGHLY PROFESSIONAL email with subject line, formal greeting, and specific product details (Invoice#, Date).
-- If the user asks in Hindi or Marathi, respond in that language.
-- Proactively suggest actions (e.g. "Warranty expires in 15 days, check for common issues").`;
+    if (!systemPrompt) {
+      systemPrompt = buildSystemPrompt({
+        userName: req.user.name,
+        userEmail: req.user.email,
+        productContext,
+        availableBrands: Object.keys(serviceDirectory)
+      });
+    }
 
     let responseText = '';
     let modelUsed = '';
@@ -738,18 +850,18 @@ Instructions:
           { role: "user", content: message }
         ];
 
-        const nvidiaResponse = await axios.post('https://integrate.api.nvidia.com/v1/chat/completions', {
-          model: "qwen/qwen2_5-7b-instruct",
+        const nvidiaResponse = await axios.post(process.env.NVIDIA_API_ENDPOINT || 'https://integrate.api.nvidia.com/v1/chat/completions', {
+          model: process.env.NVIDIA_MODEL || "qwen/qwen2_5-7b-instruct",
           messages: nvidiaMessages,
           temperature: 0.2,
           top_p: 0.7,
-          max_tokens: 1024
+          max_tokens: parseInt(process.env.NVIDIA_MAX_TOKENS || '1024')
         }, {
           headers: {
             'Authorization': `Bearer ${nvidiaApiKey}`,
             'Content-Type': 'application/json'
           },
-          timeout: 10000 // 10 second timeout for NVIDIA
+          timeout: parseInt(process.env.NVIDIA_TIMEOUT_MS || '10000') // 10 second timeout for NVIDIA
         });
 
         if (nvidiaResponse.data?.choices?.[0]?.message?.content) {
@@ -775,7 +887,7 @@ Instructions:
         ]);
 
         const result = await ai.models.generateContent({
-          model: 'gemini-2.0-flash',
+          model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
           contents: [
             { role: 'user', parts: [{ text: "System Context & Instructions: " + systemPrompt }] },
             { role: 'model', parts: [{ text: "Understood. I am your Warrify AI Advisor. How can I help you today?" }] },
@@ -804,8 +916,8 @@ Instructions:
     if (!responseText && groqApiKey && groqApiKey !== 'YOUR_GROQ_API_KEY_HERE') {
       try {
         console.log(`[AI-ADVISOR] [${requestId}] Stage 3: Calling Groq (Llama 3)...`);
-        const groqResponse = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-          model: "llama3-70b-8192",
+        const groqResponse = await axios.post(process.env.GROQ_API_ENDPOINT || 'https://api.groq.com/openai/v1/chat/completions', {
+          model: process.env.GROQ_MODEL || "llama3-70b-8192",
           messages: [
             { role: "system", content: systemPrompt },
             ...chatHistory.flatMap(h => [
@@ -815,13 +927,13 @@ Instructions:
             { role: "user", content: message }
           ],
           temperature: 0.2,
-          max_tokens: 1024
+          max_tokens: parseInt(process.env.GROQ_MAX_TOKENS || '1024')
         }, {
           headers: {
             'Authorization': `Bearer ${groqApiKey}`,
             'Content-Type': 'application/json'
           },
-          timeout: 10000
+          timeout: parseInt(process.env.GROQ_TIMEOUT_MS || '10000')
         });
 
         if (groqResponse.data?.choices?.[0]?.message?.content) {
@@ -889,133 +1001,7 @@ app.get('/api/assistant/history', authenticateToken, async (req: any, res) => {
   }
 });
 
-// Rule-based fallback when Gemini API is unavailable
-function generateFallbackResponse(query: string, products: any[], userName: string): string {
-  const q = query.toLowerCase();
-
-  // 1. Complaint email (TOP PRIORITY)
-  if (q.includes('draft_email') || q.includes('complaint') || q.includes('claim') || q.includes('email')) {
-    // Priority 1: Match by Invoice Number (Most specific)
-    let product = products.find(p => p.invoice_number && q.includes(p.invoice_number.toLowerCase()));
-
-    // Priority 2: Exact product name match
-    if (!product) {
-      product = products.find(p => q.includes(p.product_name.toLowerCase()));
-    }
-
-    // Priority 3: Brand match
-    if (!product) {
-      product = products.find(p => p.brand && q.includes(p.brand.toLowerCase()));
-    }
-
-    // Priority 4: Fallback to the first available product
-    if (!product) product = products[0];
-
-    // Extract issue from the user's query
-    let issueDescription = 'a technical issue requiring immediate attention';
-    const issuePatterns = [
-      /issue[:\s]+(.+?)(?:\.|$)/i,
-      /problem[:\s]+(.+?)(?:\.|$)/i,
-      /facing[:\s]+(.+?)(?:\.|$)/i,
-      /experiencing[:\s]+(.+?)(?:\.|$)/i,
-    ];
-    for (const pattern of issuePatterns) {
-      const match = query.match(pattern);
-      if (match && match[1]) {
-        issueDescription = match[1].trim();
-        break;
-      }
-    }
-
-    if (product) {
-      const failures = getCommonFailures(product.category, product.product_name);
-      return `**Subject:** Warranty Service Request – ${product.product_name}${product.invoice_number ? ' (Inv: ' + product.invoice_number + ')' : ''}
-
-Dear ${product.brand || 'Customer'} Support Team,
-
-I am writing to formally request a warranty claim for my ${product.product_name}, which I purchased on ${product.purchase_date}. 
-
-The product is currently ${new Date(product.expiry_date) > new Date() ? 'under warranty (expiring on ' + product.expiry_date + ')' : 'recently out of warranty (expired on ' + product.expiry_date + ')'} and has developed ${issueDescription}.
-
-**Product Details:**
-- Product: ${product.product_name}
-- Brand: ${product.brand || 'N/A'}
-- Purchase Date: ${product.purchase_date}
-- Warranty Expiry: ${product.expiry_date}
-${product.invoice_number ? '- Invoice Number: ' + product.invoice_number : ''}
-${product.purchase_price ? '- Purchase Price: ₹' + product.purchase_price : ''}
-
-**Common issues reported for this product type include:** ${failures.join(', ')}.
-
-I would appreciate your guidance on the next steps for repair or replacement under the warranty terms. I have the original invoice ready for verification.
-
-Looking forward to your prompt response.
-
-Best regards,
-${userName}`;
-    }
-    return 'Please mention the product name so I can draft a specific complaint email for you.';
-  }
-
-  // 2. Warranty status check
-  if (q.includes('warranty') || q.includes('expir') || q.includes('status') || q.includes('which') || q.includes('month')) {
-    const product = products.find(p => q.includes(p.product_name.toLowerCase()) || q.includes(p.brand?.toLowerCase()));
-    if (product) {
-      const daysLeft = Math.ceil((new Date(product.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-      if (daysLeft < 0) {
-        return `⚠️ The warranty for **${product.product_name}** expired ${Math.abs(daysLeft)} days ago (on ${product.expiry_date}). You may have missed a claim opportunity.`;
-      }
-      const failures = getCommonFailures(product.category, product.product_name);
-      return `✅ **${product.product_name}** warranty is active. It expires on ${product.expiry_date} (${daysLeft} days remaining).\n\n💡 **Proactive tip:** Common issues at this product age include: ${failures.slice(0, 2).join(', ')}. Consider a checkup before warranty ends.`;
-    }
-    if (products.length > 0) {
-      const summary = products.map(p => {
-        const dl = Math.ceil((new Date(p.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-        const status = dl < 0 ? '🔴 Expired' : dl <= 30 ? '🟡 Expiring Soon' : '🟢 Active';
-        return `• **${p.product_name}** – ${status} (${dl > 0 ? dl + ' days left' : 'expired ' + Math.abs(dl) + ' days ago'})`;
-      }).join('\n');
-      return `Here's your warranty overview:\n\n${summary}`;
-    }
-    return 'You have no products registered yet. Add a product to start tracking warranties!';
-  }
-
-  // 3. Invoice query
-  if (q.includes('invoice') || q.includes('bill') || q.includes('receipt')) {
-    const product = products.find(p => q.includes(p.product_name.toLowerCase()));
-    if (product?.invoice_file_url) {
-      return `📄 Invoice for **${product.product_name}**: [View Invoice](${product.invoice_file_url})${product.invoice_number ? '\nInvoice #: ' + product.invoice_number : ''}`;
-    }
-    return 'Please specify the product name, and make sure an invoice was uploaded when adding the product.';
-  }
-
-  // 4. Service center
-  if (q.includes('service') || q.includes('support') || q.includes('contact') || q.includes('help') || q.includes('care') || q.includes('center') || q.includes('centre')) {
-    const brands = Object.keys(serviceDirectory);
-    const brand = brands.find(b => q.includes(b.toLowerCase()));
-    if (brand) {
-      const info = serviceDirectory[brand];
-      let response = `📞 **${brand} Service Center:**\n`;
-      if (info.phone) response += `• Phone: ${info.phone}\n`;
-      if (info.email) response += `• Email: ${info.email}\n`;
-      if (info.website) response += `• Website: ${info.website}\n`;
-      if (info.centers && info.centers.length > 0) {
-        response += `\n📍 **Nearest Service Centers (Mumbai):**\n`;
-        info.centers.forEach((c: string) => {
-          response += `• ${c}\n`;
-        });
-      }
-      return response;
-    }
-    return `I can help with service center info for: ${brands.join(', ')}. Which brand do you need?`;
-  }
-
-  // 5. General greeting
-  if (q.includes('hello') || q.includes('hi') || q.includes('hey')) {
-    return `Hello, ${userName}! 👋 I'm your Warrify AI Advisor. I can help you with:\n• 📋 **Warranty status** – Check any product's warranty\n• 📄 **Invoice lookup** – Find your uploaded invoices\n• 📞 **Service centers** – Get brand contact info & nearby locations\n• 📧 **Complaint emails** – Draft professional warranty claim emails\n• 🔮 **Risk assessment** – Predict product failure probability\n• 💰 **Resale value** – Estimate product value with/without warranty\n\nJust ask away!`;
-  }
-
-  return `I can help with warranty checks, invoice lookup, service center info, risk assessments, and drafting complaint emails. Try asking:\n• "What's the warranty status of my products?"\n• "Show invoice for [product name]"\n• "Samsung service center contact"\n• "Draft complaint for [product name]"\n• "Which products expire this month?"`;
-}
+// Rule-based fallback – imported from ./config/businessRules.ts
 
 // ── Upcoming Warranties Endpoint ─────────────────────────────────────
 app.get('/api/products/upcoming/expiring', authenticateToken, async (req: any, res) => {
@@ -1054,19 +1040,30 @@ app.post('/api/products/send-claim-email', authenticateToken, async (req: any, r
 
     await sendEmail(to, subject, emailBody || 'Warranty claim request.');
 
+    // Update product status to PENDING
+    await supabase
+      .from('products')
+      .update({ claim_status: 'PENDING', updated_at: new Date().toISOString() })
+      .eq('id', productId)
+      .eq('user_id', req.user.id);
+
     // Log notification
     await supabase.from('notifications').insert({
-      user_id: req.user.id, product_id: productId, type: 'CLAIM_EMAIL', status: 'SENT', sent_at: new Date().toISOString()
+      user_id: req.user.id,
+      product_id: productId,
+      type: 'CLAIM_EMAIL',
+      status: 'SENT',
+      sent_at: new Date().toISOString()
     });
 
-    res.json({ message: `Claim email sent to ${to}`, to });
+    res.json({ message: `Claim email sent to ${to}`, to, status: 'PENDING' });
   } catch (error) {
     console.error('Send claim email error:', error);
     res.status(500).json({ error: 'Failed to send claim email' });
   }
 });
 
-// ── Admin Stats Endpoint ─────────────────────────────────────────────
+// ── Admin Stats Endpoint (Phase 5 – DB-backed impact factors) ────────
 app.get('/api/admin/stats', async (req, res) => {
   try {
     const { count: totalUsers } = await supabase.from('users').select('*', { count: 'exact', head: true });
@@ -1074,11 +1071,22 @@ app.get('/api/admin/stats', async (req, res) => {
     const { count: totalNotifications } = await supabase.from('notifications').select('*', { count: 'exact', head: true });
 
     const { data: products } = await supabase.from('products').select('category, expiry_date');
+
+    // Fetch impact factors from DB, fall back to env variables
+    let UNEP_CO2: Record<string, number> = process.env.UNEP_CO2_FACTORS ? JSON.parse(process.env.UNEP_CO2_FACTORS) : {};
+    let EWASTE: Record<string, number> = process.env.EWASTE_FACTORS ? JSON.parse(process.env.EWASTE_FACTORS) : {};
+    try {
+      const { data: factors } = await supabase.from('impact_factors').select('category, co2_kg, ewaste_kg');
+      if (factors && factors.length > 0) {
+        UNEP_CO2 = {};
+        EWASTE = {};
+        factors.forEach((f: any) => { UNEP_CO2[f.category] = f.co2_kg; EWASTE[f.category] = f.ewaste_kg; });
+      }
+    } catch { /* use hardcoded fallback */ }
+
     let eWaste = 0;
     let co2Saved = 0;
     const now = new Date();
-    const UNEP_CO2: Record<string, number> = { 'Electronics': 18, 'Appliances': 65, 'Vehicle': 120, 'Furniture': 25 };
-    const EWASTE: Record<string, number> = { 'Electronics': 0.2, 'Appliances': 1.5, 'Vehicle': 3.0, 'Furniture': 0.5 };
     (products || []).forEach((p: any) => {
       const isActive = new Date(p.expiry_date) > now;
       if (isActive) {
@@ -1087,14 +1095,21 @@ app.get('/api/admin/stats', async (req, res) => {
       }
     });
 
+    // Fetch platform version from DB settings
+    let platformVersion = process.env.PLATFORM_VERSION || '';
+    try {
+      const { data: verSetting } = await supabase.from('app_settings').select('value').eq('key', 'platform_version').single();
+      if (verSetting?.value) platformVersion = typeof verSetting.value === 'string' ? JSON.parse(verSetting.value) : verSetting.value;
+    } catch { /* use default */ }
+
     res.json({
       totalUsers: totalUsers || 0,
       totalProducts: totalProducts || 0,
       totalNotifications: totalNotifications || 0,
       eWasteSavedKg: eWaste.toFixed(1),
       co2SavedKg: co2Saved.toFixed(1),
-      platformVersion: '2.0.0',
-      techStack: ['React 19', 'TypeScript', 'Node.js/Express', 'Supabase (PostgreSQL)', 'Firebase Auth', 'Gemini AI 2.0', 'Tesseract.js OCR', 'Nodemailer', 'Helmet Security', 'Rate Limiting']
+      platformVersion,
+      techStack: ['React 19', 'TypeScript', 'Node.js/Express', 'Supabase (PostgreSQL)', 'Firebase Auth', 'Multi-AI (NVIDIA/Gemini/Groq)', 'Tesseract.js OCR', 'Nodemailer', 'Helmet Security', 'Rate Limiting']
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch stats' });
@@ -1104,7 +1119,7 @@ app.get('/api/admin/stats', async (req, res) => {
 // ── User Profile Endpoint ────────────────────────────────────────────
 app.get('/api/user/profile', authenticateToken, async (req: any, res) => {
   try {
-    const { data: user } = await supabase.from('users').select('id, name, email, city, created_at').eq('id', req.user.id).single();
+    const { data: user } = await supabase.from('users').select('id, name, email, city, preferences, created_at').eq('id', req.user.id).single();
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const { count: productCount } = await supabase.from('products').select('*', { count: 'exact', head: true }).eq('user_id', req.user.id);
@@ -1118,16 +1133,17 @@ app.get('/api/user/profile', authenticateToken, async (req: any, res) => {
 
 app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
   try {
-    const { name, city } = req.body;
+    const { name, city, preferences } = req.body;
     const updates: any = {};
     if (name) updates.name = name;
     if (city) updates.city = city;
+    if (preferences) updates.preferences = preferences;
 
     const { data: user, error } = await supabase
       .from('users')
       .update(updates)
       .eq('id', req.user.id)
-      .select('id, name, email, city, created_at')
+      .select('id, name, email, city, preferences, created_at')
       .single();
 
     if (error) throw error;
@@ -1137,52 +1153,115 @@ app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
   }
 });
 
+app.delete('/api/user/profile', authenticateToken, async (req: any, res) => {
+  try {
+    // Relying on Supabase CASCADE deletes if configured, otherwise manually deleting related rows
+    await supabase.from('notifications').delete().eq('user_id', req.user.id);
+    await supabase.from('assistant_chats').delete().eq('user_id', req.user.id);
+    await supabase.from('products').delete().eq('user_id', req.user.id);
+    await supabase.from('users').delete().eq('id', req.user.id);
+
+    // Attempt Firebase user deletion (only works if we integrated firebase-admin exactly this way, 
+    // but typically handled client-side or needs firebase-admin auth SDK)
+    try {
+      await admin.auth().deleteUser(req.user.id);
+    } catch (e) {
+      console.warn("Could not delete firebase user:", e);
+    }
+
+    res.json({ message: 'Account deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete account' });
+  }
+});
+
 // ── Notifications & Cron ─────────────────────────────────────────────
 const sendEmail = async (to: string, subject: string, text: string) => {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.log(`[MOCK EMAIL] To: ${to}, Subject: ${subject}, Body: ${text}`);
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS || process.env.EMAIL_PASS.includes('YOUR_')) {
+    console.log(`[EMAIL-MOCK] To: ${to}, Subject: ${subject}`);
+    console.log(`[EMAIL-MOCK] Body: ${text.substring(0, 100)}...`);
     return true;
   }
 
+  console.log(`[EMAIL] Attempting to send to ${to} via Gmail...`);
   const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
+      user: (process.env.EMAIL_USER || '').trim(),
+      pass: (process.env.EMAIL_PASS || '').trim(),
     },
   });
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_USER,
-    to,
-    subject,
-    text,
-  });
-  return true;
+  try {
+    await transporter.sendMail({
+      from: `"Warrify AI" <${(process.env.EMAIL_USER || '').trim()}>`,
+      to,
+      subject,
+      text,
+    });
+    console.log(`[EMAIL] Success: Sent to ${to}`);
+    return true;
+  } catch (error: any) {
+    console.error(`[EMAIL] Failed to send to ${to}:`, error.message);
+    throw new Error(`Nodemailer error: ${error.message}`);
+  }
 };
 
-app.post('/api/notifications/test', authenticateToken, async (req: any, res) => {
+app.post('/api/notifications/test', authenticateToken, async (req: any, res: any) => {
   try {
     const { productId } = req.body;
-    const { data: product } = await supabase.from('products').select('*').eq('id', productId).eq('user_id', req.user.id).single();
-    if (!product) return res.status(404).json({ error: 'Product not found' });
+    const pId = parseInt(String(productId));
 
-    const { data: user } = await supabase.from('users').select('email').eq('id', req.user.id).single();
+    if (isNaN(pId)) {
+      return res.status(400).json({ error: 'Invalid product ID' });
+    }
 
+    // 1. Fetch Product
+    const { data: product, error: prodError } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', pId)
+      .eq('user_id', req.user.id)
+      .single();
+
+    if (prodError || !product) {
+      console.error('[NOTIF-TEST] Product not found:', prodError?.message);
+      return res.status(404).json({ error: `Product ${pId} not found or access denied.` });
+    }
+
+    // 2. Fetch User Email
+    const { data: user, error: userError } = await supabase.from('users').select('email').eq('id', req.user.id).single();
+    if (userError) console.warn('[NOTIF-TEST] Could not fetch user profile email:', userError.message);
+
+    const targetEmail = user?.email || req.user.email;
+    if (!targetEmail) return res.status(400).json({ error: 'Recipient email not found.' });
+
+    // 3. Send Email
     const daysLeft = Math.ceil((new Date(product.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
     const subject = `⚠️ Warranty Reminder: ${product.product_name}`;
-    const body = `Hi ${req.user.name},\n\nThis is a warranty reminder from Warrify.\n\nProduct: ${product.product_name}\nBrand: ${product.brand || 'N/A'}\nPurchase Date: ${product.purchase_date}\nExpiry Date: ${product.expiry_date}\nDays Left: ${daysLeft > 0 ? daysLeft + ' days' : 'EXPIRED'}\n${product.purchase_price ? 'Purchase Price: ₹' + product.purchase_price : ''}\n\n${daysLeft <= 30 && daysLeft > 0 ? '⚠️ Your warranty is expiring soon! Consider filing any pending claims.' : ''}\n\nVisit your Warrify dashboard to take action.\n\n— Warrify AI Warranty Management`;
+    const body = `Hi ${req.user.name},\n\nThis is a warranty reminder from Warrify.\n\nProduct: ${product.product_name}\nBrand: ${product.brand || 'N/A'}\nPurchase Date: ${product.purchase_date}\nExpiry Date: ${product.expiry_date}\nDays Left: ${daysLeft > 0 ? daysLeft + ' days' : 'EXPIRED'}\n\nVisit your dashboard to take action.\n\n— Warrify AI`;
 
-    await sendEmail(user?.email || req.user.email, subject, body);
+    try {
+      await sendEmail(targetEmail, subject, body);
+    } catch (e: any) {
+      return res.status(500).json({ error: 'Email service failed', details: e.message });
+    }
 
-    await supabase.from('notifications').insert({
-      user_id: req.user.id, product_id: productId, type: 'TEST', status: 'SENT', sent_at: new Date().toISOString()
+    // 4. Log Notification
+    const { error: logError } = await supabase.from('notifications').insert({
+      user_id: req.user.id,
+      product_id: pId,
+      type: 'TEST',
+      status: 'SENT',
+      sent_at: new Date().toISOString()
     });
 
-    res.json({ message: `Reminder sent to ${user?.email}` });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Failed to send test email' });
+    if (logError) console.error('[NOTIF-TEST] Database logging failed:', logError.message);
+
+    res.json({ message: `Reminder successfully sent to ${targetEmail}` });
+  } catch (error: any) {
+    console.error('[NOTIF-TEST] Unhandled Error:', error);
+    res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
 });
 
@@ -1211,13 +1290,16 @@ app.get('/api/notifications', authenticateToken, async (req: any, res) => {
   }
 });
 
-// Cron Job – check every 5 minutes in dev
-cron.schedule('*/5 * * * *', async () => {
+// Cron Job
+cron.schedule(process.env.CRON_SCHEDULE || '0 0 * * *', async () => {
   console.log('[CRON] Running warranty check...');
   try {
     const today = new Date();
-    const thirtyDaysStr = new Date(today.getTime() + 30 * 86400000).toISOString().split('T')[0];
-    const sevenDaysStr = new Date(today.getTime() + 7 * 86400000).toISOString().split('T')[0];
+    const window1Days = Number(process.env.REMINDER_WINDOW_1_DAYS) || 30;
+    const window2Days = Number(process.env.REMINDER_WINDOW_2_DAYS) || 7;
+
+    const thirtyDaysStr = new Date(today.getTime() + window1Days * 86400000).toISOString().split('T')[0];
+    const sevenDaysStr = new Date(today.getTime() + window2Days * 86400000).toISOString().split('T')[0];
 
     const { data: products30 } = await supabase.from('products').select('*').eq('expiry_date', thirtyDaysStr);
     const { data: products7 } = await supabase.from('products').select('*').eq('expiry_date', sevenDaysStr);
@@ -1226,11 +1308,16 @@ cron.schedule('*/5 * * * *', async () => {
       const { data: existing } = await supabase.from('notifications').select('id').eq('product_id', product.id).eq('type', type).eq('status', 'SENT').single();
       if (existing) return;
 
-      const { data: user } = await supabase.from('users').select('email, name').eq('id', product.user_id).single();
+      const { data: user } = await supabase.from('users').select('email, name, preferences').eq('id', product.user_id).single();
       if (!user) return;
 
+      // Check user preferences
+      const prefs = user.preferences || { rem_30: true, rem_7: true };
+      if (type === '30_DAY' && prefs.rem_30 === false) return;
+      if (type === '7_DAY' && prefs.rem_7 === false) return;
+
       const subject = `⚠️ Warranty Expiring Soon: ${product.product_name}`;
-      const body = `Hi ${user.name},\n\nYour product ${product.product_name} warranty expires on ${product.expiry_date}. You have ${type === '30_DAY' ? '30' : '7'} days left.\n\nVisit your Warrify dashboard to take action.\n\n— Warrify AI Warranty Management`;
+      const body = `Hi ${user.name},\n\nYour product ${product.product_name} warranty expires on ${product.expiry_date}. You have ${type === '30_DAY' ? window1Days : window2Days} days left.\n\nVisit your Warrify dashboard to take action.\n\n— Warrify AI Warranty Management`;
 
       try {
         await sendEmail(user.email, subject, body);
@@ -1250,15 +1337,15 @@ cron.schedule('*/5 * * * *', async () => {
   }
 });
 
-// ── Demo Data Seeding (Dev Only) ─────────────────────────────────────
+// ── Demo Data Seeding (Phase 8 – gated behind DEMO_MODE) ────────────
 app.post('/api/seed-demo', async (req, res) => {
   try {
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(403).json({ error: 'Demo seeding is disabled in production' });
+    if (process.env.DEMO_MODE !== 'true') {
+      return res.status(403).json({ error: 'Demo seeding is disabled. Set DEMO_MODE=true in env to enable.' });
     }
 
-    const email = 'shravani@warrify.com';
-    const name = 'Shravani Dakve';
+    const email = process.env.DEMO_USER_EMAIL || 'shravani@warrify.com';
+    const name = process.env.DEMO_USER_NAME || 'Shravani Dakve';
 
     // Check if user exists
     let userId: string;
@@ -1284,20 +1371,13 @@ app.post('/api/seed-demo', async (req, res) => {
 
     const today = new Date();
 
-    const products = [
-      { name: 'Samsung Galaxy S24 Ultra', brand: 'Samsung', cat: 'Electronics', price: 129999, inv: 'SAM-2025-78432', wm: 12, daysToExpiry: 22, notes: 'Primary phone, 256GB Titanium Black', claim: null },
-      { name: 'LG Front Load Washing Machine', brand: 'LG', cat: 'Appliances', price: 42990, inv: 'LG-2024-55123', wm: 24, daysToExpiry: 8, notes: '8kg capacity, AI Direct Drive', claim: null },
-      { name: 'Sony WH-1000XM5 Headphones', brand: 'Sony', cat: 'Electronics', price: 26990, inv: 'SONY-2025-11209', wm: 12, daysToExpiry: -27, notes: 'Noise cancelling — faded receipt digitized via Warrify', claim: 'claimed' },
-      { name: 'HP Pavilion Laptop 15', brand: 'HP', cat: 'Electronics', price: 65999, inv: 'HP-2025-66778', wm: 24, daysToExpiry: 530, notes: 'Intel i7, 16GB RAM, 512GB SSD', claim: null },
-      { name: 'Whirlpool Double Door Refrigerator', brand: 'Whirlpool', cat: 'Appliances', price: 38500, inv: 'WP-2024-99321', wm: 36, daysToExpiry: 640, notes: '340L Frost Free, 3-Star Energy Rating', claim: null },
-      { name: 'OnePlus Nord CE 4', brand: 'OnePlus', cat: 'Electronics', price: 24999, inv: 'OP-2025-44567', wm: 12, daysToExpiry: 190, notes: 'Secondary phone for work', claim: null },
-      { name: 'Godrej Interio Office Chair', brand: 'Godrej', cat: 'Furniture', price: 18500, inv: 'GDR-2025-12890', wm: 60, daysToExpiry: 1410, notes: 'Ergonomic Motion High-Back', claim: null },
-      { name: 'Voltas Split AC 1.5 Ton', brand: 'Voltas', cat: 'Appliances', price: 35990, inv: 'VOL-2024-87654', wm: 12, daysToExpiry: -335, notes: '5-Star Inverter, Copper condenser', claim: 'claimed' },
-      { name: 'Apple AirPods Pro 2', brand: 'Apple', cat: 'Electronics', price: 24900, inv: 'APL-2025-33221', wm: 12, daysToExpiry: 300, notes: 'USB-C, with MagSafe case', claim: null },
-      { name: 'Bosch Dishwasher Series 4', brand: 'Bosch', cat: 'Appliances', price: 54990, inv: 'BSH-2025-77890', wm: 24, daysToExpiry: 440, notes: '13 Place Settings, Silence Plus', claim: null },
-      { name: 'Xiaomi Redmi Note 13 Pro', brand: 'Xiaomi', cat: 'Electronics', price: 18999, inv: 'XI-2025-55678', wm: 12, daysToExpiry: 215, notes: 'Rescued from faded thermal receipt', claim: null },
-      { name: 'Panasonic Microwave Oven', brand: 'Panasonic', cat: 'Appliances', price: 11490, inv: 'PAN-2025-44321', wm: 12, daysToExpiry: 3, notes: '27L Convection — URGENT: claim pending', claim: 'pending' },
-    ];
+    const seedDataPath = path.join(process.cwd(), 'scripts', 'demo-seed.json');
+    if (!fs.existsSync(seedDataPath)) {
+      return res.status(500).json({ error: 'Demo seed data file not found' });
+    }
+    const seedData = JSON.parse(fs.readFileSync(seedDataPath, 'utf8'));
+    const products = seedData.products;
+    const notifs = seedData.notifs;
 
     const productIds: number[] = [];
     for (const p of products) {
@@ -1315,18 +1395,6 @@ app.post('/api/seed-demo', async (req, res) => {
       productIds.push(inserted!.id);
     }
 
-    const notifs = [
-      { idx: 0, type: 'PRODUCT_ADDED', daysAgo: 365 },
-      { idx: 1, type: '30_DAY', daysAgo: 22 },
-      { idx: 0, type: '30_DAY', daysAgo: 8 },
-      { idx: 2, type: 'CLAIM_EMAIL', daysAgo: 30 },
-      { idx: 7, type: 'CLAIM_EMAIL', daysAgo: 340 },
-      { idx: 11, type: '7_DAY', daysAgo: 0 },
-      { idx: 3, type: 'PRODUCT_ADDED', daysAgo: 200 },
-      { idx: 4, type: 'PRODUCT_ADDED', daysAgo: 460 },
-      { idx: 10, type: 'PRODUCT_ADDED', daysAgo: 150 },
-    ];
-
     for (const n of notifs) {
       const d = new Date(today);
       d.setDate(d.getDate() - n.daysAgo);
@@ -1341,9 +1409,9 @@ app.post('/api/seed-demo', async (req, res) => {
       credentials: { email, note: 'Use Firebase Auth to login' },
       stats: {
         products: products.length,
-        active: products.filter(p => p.daysToExpiry > 0).length,
-        expired: products.filter(p => p.daysToExpiry <= 0).length,
-        claimed: products.filter(p => p.claim).length,
+        active: products.filter((p: any) => p.daysToExpiry > 0).length,
+        expired: products.filter((p: any) => p.daysToExpiry <= 0).length,
+        claimed: products.filter((p: any) => p.claim).length,
       }
     });
   } catch (error) {

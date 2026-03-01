@@ -6,6 +6,9 @@ import {
     signOut,
     onAuthStateChanged,
     updateProfile,
+    sendPasswordResetEmail,
+    signInWithPopup,
+    GoogleAuthProvider,
     type User,
 } from 'firebase/auth';
 
@@ -27,5 +30,8 @@ export {
     signOut,
     onAuthStateChanged,
     updateProfile,
+    sendPasswordResetEmail,
+    signInWithPopup,
+    GoogleAuthProvider,
     type User,
 };

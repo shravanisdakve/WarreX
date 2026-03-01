@@ -160,40 +160,32 @@ def create_invoice(filename, store_name, item_name, price, date_str, invoice_num
     image = image.rotate(random.uniform(-0.5, 0.5), expand=1, fillcolor=bg_color)
     image = image.filter(ImageFilter.GaussianBlur(0.3))
     
-    # Save to public/demo-invoices as asked by user but also demo-invoices in root
-    out_dir_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'demo-invoices')
-    os.makedirs(out_dir_root, exist_ok=True)
-    out_path_root = os.path.join(out_dir_root, filename)
+    # Save to public/demo-invoices
+    out_dir_public = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'public', 'demo-invoices')
+    os.makedirs(out_dir_public, exist_ok=True)
+    out_path_public = os.path.join(out_dir_public, filename)
     
     # Save as JPEG for realistic artifacting
     image = image.convert('RGB')
-    image.save(out_path_root, 'JPEG', quality=85)
-    print(f"Generated {out_path_root}")
+    image.save(out_path_public, 'JPEG', quality=85)
+    print(f"Generated {out_path_public}")
 
 if __name__ == '__main__':
-    create_invoice(
-        "samsung_galaxy_math.jpg", 
-        "ElectroWorld Superstore", 
-        "Samsung Galaxy Math S24 Ultra", 
-        1299.99, 
-        datetime.now().strftime("%Y-%m-%d"), 
-        "INV-2024-001"
-    )
-    
-    create_invoice(
-        "lg_washing_machine.jpg", 
-        "Home Appliance Hub", 
-        "LG 9kg Front Load Washing Machine", 
-        849.00, 
-        (datetime.now() - timedelta(days=15)).strftime("%Y-%m-%d"), 
-        "HAH-992384"
-    )
+    invoices_to_create = [
+        ("apple_iphone_15.jpg", "Apple Store", "iPhone 15 Pro Max 256GB", 1199.00, 2),
+        ("dell_xps_monitor.jpg", "Dell Technologies", "Dell XPS 27-inch 4K Monitor", 649.99, 10),
+        ("hp_laptop_spectre.jpg", "HP Home Store", "HP Spectre x360 Laptop", 1349.50, 45),
+        ("bosch_dishwasher.jpg", "Kitchen Solutions", "Bosch 800 Series Dishwasher", 949.00, 120),
+        ("dyson_vacuum.jpg", "Dyson Specialist", "Dyson V15 Detect Cordless Vacuum", 749.99, 60),
+        ("bose_soundbar.jpg", "Bose Audio", "Bose Smart Soundbar 900", 899.00, 5),
+        ("nikon_z6_camera.jpg", "Camera World", "Nikon Z6 II Mirrorless Camera", 1996.95, 30),
+        ("philips_airfryer.jpg", "Smart Home Tech", "Philips Airfryer XXL Smart Sensing", 349.95, 15),
+        ("whirlpool_fridge.jpg", "Appliance Depot", "Whirlpool French Door Refrigerator", 2499.00, 200),
+        ("nintendo_switch.jpg", "Gaming Paradise", "Nintendo Switch OLED Model", 349.99, 1)
+    ]
 
-    create_invoice(
-        "sony_headphones.jpg",
-        "AudioTech Center",
-        "Sony WH-1000XM5 Wireless Headphones",
-        348.50,
-        (datetime.now() - timedelta(days=5)).strftime("%Y-%m-%d"),
-        "AUD-83726"
-    )
+    for filename, store, item, price, days_ago in invoices_to_create:
+        date_str = (datetime.now() - timedelta(days=days_ago)).strftime("%Y-%m-%d")
+        invoice_num = f"INV-{random.randint(1000, 9999)}-{random.randint(100, 999)}"
+        create_invoice(filename, store, item, price, date_str, invoice_num)
+

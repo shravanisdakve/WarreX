@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { Send, Bot, User, Sparkles, Brain } from 'lucide-react';
+import { QUICK_ACTIONS, WELCOME_MESSAGE, WELCOME_MESSAGE_SHORT } from '../config/aiConfig';
 
 interface Message {
   id: number;
@@ -11,23 +12,17 @@ interface Message {
   isLoading?: boolean;
 }
 
-const QUICK_ACTIONS = [
-  { label: '📋 Warranty Overview', message: 'Show me the warranty status of all my products' },
-  { label: '⚠️ Expiring Soon', message: 'Which of my products have warranties expiring this month?' },
-  { label: '📞 Service Centers', message: 'Show me Samsung service center locations near Mumbai' },
-  { label: '📧 Draft Claim', message: 'Help me draft a warranty claim email for my LG Washing Machine. Issue: unusual noise from drum during spin cycle' },
-  { label: '🔮 Risk Analysis', message: 'What are the common failure risks for my products based on their age?' },
-  { label: '💰 Resale Value', message: 'What is the resale value of my Samsung Galaxy S24 with warranty?' },
-];
-
 export default function Assistant() {
   const { t, i18n } = useTranslation();
   const [messages, setMessages] = useState<Message[]>([
-    { id: 1, text: `Hello! I'm your Warrify AI Advisor. 🧠\n\nI don't just answer questions — I proactively analyze your warranty portfolio and suggest actions.\n\n**Here's what I can do:**\n• 📋 Check warranty status of all your products\n• 🔮 Predict failure risks based on product age\n• 📧 Draft professional claim emails with specific issues\n• 📞 Find nearest service centers with contact details\n• 💰 Estimate product resale value with/without warranty\n\nTry the quick actions below, or just ask me anything!`, sender: 'bot', timestamp: new Date() }
+    { id: 1, text: WELCOME_MESSAGE, sender: 'bot', timestamp: new Date() }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const [quickActions, setQuickActions] = useState(QUICK_ACTIONS);
+  const [welcomeMessageShort, setWelcomeMessageShort] = useState(WELCOME_MESSAGE_SHORT);
 
   useEffect(() => {
     scrollToBottom();
@@ -36,10 +31,10 @@ export default function Assistant() {
   useEffect(() => {
     if (messages.length <= 1) { // Only set default if it's the first time or only one message
       setMessages([
-        { id: Date.now(), text: `Hello! I'm your Warrify AI Advisor. 🧠\n\nI proactively analyze your warranty portfolio and suggest actions.\n\n**Quick actions:**\n• Check warranty status\n• Predict failure risks\n• Draft claim emails\n• Find service centers\n• Estimate resale value\n\nJust ask!`, sender: 'bot', timestamp: new Date() }
+        { id: Date.now(), text: welcomeMessageShort, sender: 'bot', timestamp: new Date() }
       ]);
     }
-  }, [i18n.language]);
+  }, [i18n.language, welcomeMessageShort]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -47,22 +42,41 @@ export default function Assistant() {
 
   // Fetch history on mount
   useEffect(() => {
-    const fetchHistory = async () => {
+    const fetchHistoryAndConfig = async () => {
       try {
-        const res = await axios.get('/api/assistant/history');
-        if (res.data && res.data.length > 0) {
+        const [historyRes, catalogRes] = await Promise.all([
+          axios.get('/api/assistant/history').catch(() => ({ data: [] })),
+          axios.get('/api/meta/catalog').catch(() => ({ data: {} }))
+        ]);
+
+        const catalog = catalogRes.data;
+        if (catalog.quickActions) setQuickActions(catalog.quickActions);
+
+        let initialMessage = WELCOME_MESSAGE;
+        if (catalog.welcomeMessages?.welcomeShort) {
+          setWelcomeMessageShort(catalog.welcomeMessages.welcomeShort);
+        }
+        if (catalog.welcomeMessages?.welcome) {
+          initialMessage = catalog.welcomeMessages.welcome;
+        }
+
+        if (historyRes.data && historyRes.data.length > 0) {
           // Convert string timestamps back to Date objects
-          const history = res.data.map((m: any) => ({
+          const history = historyRes.data.map((m: any) => ({
             ...m,
             timestamp: new Date(m.timestamp)
           }));
           setMessages(history);
+        } else {
+          setMessages([
+            { id: 1, text: initialMessage, sender: 'bot', timestamp: new Date() }
+          ]);
         }
       } catch (err) {
         console.error('Failed to load chat history:', err);
       }
     };
-    fetchHistory();
+    fetchHistoryAndConfig();
   }, []);
 
   const sendMessage = async (messageText: string) => {
@@ -122,11 +136,11 @@ export default function Assistant() {
       <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-5 py-4 text-white flex justify-between items-center shadow-lg">
         <h2 className="text-lg font-semibold flex items-center">
           <Brain className="w-5 h-5 mr-2" />
-          AI Advisor
+          {t('assistant')}
         </h2>
         <div className="flex items-center gap-2">
           <span className="text-xs bg-white/20 px-2 py-1 rounded-full flex items-center gap-1">
-            <Sparkles className="w-3 h-3" /> Gemini Powered
+            <Sparkles className="w-3 h-3" /> {t('ai_powered')}
           </span>
         </div>
       </div>
@@ -150,7 +164,7 @@ export default function Assistant() {
                       <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
                       <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
                     </div>
-                    <span className="text-sm">Analyzing your warranty data...</span>
+                    <span className="text-sm">{t('analyzing_data')}</span>
                   </div>
                 ) : (
                   <div className="text-sm whitespace-pre-wrap space-y-1">
@@ -172,7 +186,7 @@ export default function Assistant() {
         <div className="px-4 py-3 bg-[#151c2e] border-t border-white/5">
           <p className="text-xs text-slate-500 mb-2">Quick actions:</p>
           <div className="flex flex-wrap gap-2">
-            {QUICK_ACTIONS.map((action, i) => (
+            {quickActions.map((action: any, i: number) => (
               <button
                 key={i}
                 onClick={() => sendMessage(action.message)}
@@ -195,7 +209,7 @@ export default function Assistant() {
           aria-label={t('ask_placeholder') || 'Type a message...'}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about warranties, claim strategies, service centers..."
+          placeholder={t('ask_placeholder')}
           disabled={isLoading}
           className="flex-1 bg-white/5 border border-white/10 rounded-full px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-sm text-slate-200 placeholder-slate-600 disabled:bg-white/[0.02] transition-all hover:border-white/20"
         />

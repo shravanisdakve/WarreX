@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { auth, createUserWithEmailAndPassword, updateProfile } from '../lib/firebase';
 import { Lock, Mail, User, ShieldCheck, Loader, ArrowRight } from 'lucide-react';
 
+
 export default function Signup() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -136,6 +137,7 @@ export default function Signup() {
               {loading ? <Loader className="w-4 h-4 animate-spin" /> : null}
               {loading ? 'Creating account...' : <>Create account <ArrowRight className="w-4 h-4" /></>}
             </button>
+
 
             <p className="text-center text-sm text-slate-500">
               Already have an account?{' '}

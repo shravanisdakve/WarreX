@@ -1,14 +1,19 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { auth, signInWithEmailAndPassword } from '../lib/firebase';
+import { auth, signInWithEmailAndPassword, sendPasswordResetEmail } from '../lib/firebase';
 import { Lock, Mail, ShieldCheck, Loader, ArrowRight } from 'lucide-react';
+
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [resetError, setResetError] = useState('');
+  const [resetEmail, setResetEmail] = useState('');
+  const [showForgot, setShowForgot] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -28,6 +33,23 @@ export default function Login() {
       else setError(err.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetSent(false);
+    setResetError('');
+    if (!resetEmail) {
+      setResetError('Please enter your email.');
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, resetEmail);
+      setResetSent(true);
+      setTimeout(() => setShowForgot(false), 3000);
+    } catch (err: any) {
+      setResetError(err.message || 'Failed to send reset email.');
     }
   };
 
@@ -72,7 +94,10 @@ export default function Login() {
               </div>
             </div>
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-400 mb-1.5">Password</label>
+              <div className="flex justify-between items-center mb-1.5">
+                <label htmlFor="password" className="block text-sm font-medium text-slate-400">Password</label>
+                <button type="button" onClick={() => setShowForgot(true)} className="text-xs font-medium text-indigo-400 hover:text-indigo-300 transition-colors">Forgot password?</button>
+              </div>
               <div className="relative group">
                 <Lock className="absolute top-3 left-3 text-slate-500 w-4 h-4 group-focus-within:text-indigo-400 transition-colors" />
                 <input
@@ -104,6 +129,7 @@ export default function Login() {
               {loading ? 'Signing in...' : <>Sign in <ArrowRight className="w-4 h-4" /></>}
             </button>
 
+
             <p className="text-center text-sm text-slate-500">
               Don't have an account?{' '}
               <Link to="/signup" className="font-semibold text-indigo-400 hover:text-indigo-300 transition-colors">
@@ -113,6 +139,38 @@ export default function Login() {
           </form>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgot && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#151c2e] p-6 rounded-2xl max-w-sm w-full border border-indigo-500/20 shadow-2xl">
+            <h3 className="text-lg font-bold text-white mb-2">Reset Password</h3>
+            <p className="text-sm text-slate-400 mb-4">Enter your email and we'll send you a link to reset your password.</p>
+
+            {resetSent ? (
+              <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm p-3 rounded-lg text-center mb-4">
+                Reset link sent! Check your inbox.
+              </div>
+            ) : (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <input
+                  type="email"
+                  required
+                  placeholder="Your email"
+                  value={resetEmail}
+                  onChange={e => setResetEmail(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500/50"
+                />
+                {resetError && <p className="text-xs text-red-400">{resetError}</p>}
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => setShowForgot(false)} className="flex-1 py-2 text-sm text-slate-300 bg-white/5 hover:bg-white/10 rounded-lg transition-colors">Cancel</button>
+                  <button type="submit" className="flex-1 py-2 text-sm text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors">Send Link</button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

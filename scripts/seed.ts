@@ -20,10 +20,10 @@ export async function seedDemoDatabase(existingDb?: any) {
   try { database.exec(`CREATE INDEX IF NOT EXISTS idx_products_expiry ON products(expiry_date)`); } catch (e) { }
 
   // 1. Create Demo User
-  const email = 'shravani@warrify.com';
-  const password = 'demo123';
+  const email = process.env.DEMO_USER_EMAIL || 'shravani@warrify.com';
+  const password = process.env.DEMO_USER_PASSWORD || 'demo123';
   const hashedPassword = await bcrypt.hash(password, 10);
-  const name = 'Shravani Dakve';
+  const name = process.env.DEMO_USER_NAME || 'Shravani Dakve';
 
   let userId: any;
   try {

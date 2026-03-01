@@ -1,0 +1,183 @@
+{
+    "products": [
+        {
+            "name": "Samsung Galaxy S24 Ultra",
+            "brand": "Samsung",
+            "cat": "Electronics",
+            "price": 129999,
+            "inv": "SAM-2025-78432",
+            "wm": 12,
+            "daysToExpiry": 22,
+            "notes": "Primary phone, 256GB Titanium Black",
+            "claim": null
+        },
+        {
+            "name": "LG Front Load Washing Machine",
+            "brand": "LG",
+            "cat": "Appliances",
+            "price": 42990,
+            "inv": "LG-2024-55123",
+            "wm": 24,
+            "daysToExpiry": 8,
+            "notes": "8kg capacity, AI Direct Drive",
+            "claim": null
+        },
+        {
+            "name": "Sony WH-1000XM5 Headphones",
+            "brand": "Sony",
+            "cat": "Electronics",
+            "price": 26990,
+            "inv": "SONY-2025-11209",
+            "wm": 12,
+            "daysToExpiry": -27,
+            "notes": "Noise cancelling — faded receipt digitized via Warrify",
+            "claim": "claimed"
+        },
+        {
+            "name": "HP Pavilion Laptop 15",
+            "brand": "HP",
+            "cat": "Electronics",
+            "price": 65999,
+            "inv": "HP-2025-66778",
+            "wm": 24,
+            "daysToExpiry": 530,
+            "notes": "Intel i7, 16GB RAM, 512GB SSD",
+            "claim": null
+        },
+        {
+            "name": "Whirlpool Double Door Refrigerator",
+            "brand": "Whirlpool",
+            "cat": "Appliances",
+            "price": 38500,
+            "inv": "WP-2024-99321",
+            "wm": 36,
+            "daysToExpiry": 640,
+            "notes": "340L Frost Free, 3-Star Energy Rating",
+            "claim": null
+        },
+        {
+            "name": "OnePlus Nord CE 4",
+            "brand": "OnePlus",
+            "cat": "Electronics",
+            "price": 24999,
+            "inv": "OP-2025-44567",
+            "wm": 12,
+            "daysToExpiry": 190,
+            "notes": "Secondary phone for work",
+            "claim": null
+        },
+        {
+            "name": "Godrej Interio Office Chair",
+            "brand": "Godrej",
+            "cat": "Furniture",
+            "price": 18500,
+            "inv": "GDR-2025-12890",
+            "wm": 60,
+            "daysToExpiry": 1410,
+            "notes": "Ergonomic Motion High-Back",
+            "claim": null
+        },
+        {
+            "name": "Voltas Split AC 1.5 Ton",
+            "brand": "Voltas",
+            "cat": "Appliances",
+            "price": 35990,
+            "inv": "VOL-2024-87654",
+            "wm": 12,
+            "daysToExpiry": -335,
+            "notes": "5-Star Inverter, Copper condenser",
+            "claim": "claimed"
+        },
+        {
+            "name": "Apple AirPods Pro 2",
+            "brand": "Apple",
+            "cat": "Electronics",
+            "price": 24900,
+            "inv": "APL-2025-33221",
+            "wm": 12,
+            "daysToExpiry": 300,
+            "notes": "USB-C, with MagSafe case",
+            "claim": null
+        },
+        {
+            "name": "Bosch Dishwasher Series 4",
+            "brand": "Bosch",
+            "cat": "Appliances",
+            "price": 54990,
+            "inv": "BSH-2025-77890",
+            "wm": 24,
+            "daysToExpiry": 440,
+            "notes": "13 Place Settings, Silence Plus",
+            "claim": null
+        },
+        {
+            "name": "Xiaomi Redmi Note 13 Pro",
+            "brand": "Xiaomi",
+            "cat": "Electronics",
+            "price": 18999,
+            "inv": "XI-2025-55678",
+            "wm": 12,
+            "daysToExpiry": 215,
+            "notes": "Rescued from faded thermal receipt",
+            "claim": null
+        },
+        {
+            "name": "Panasonic Microwave Oven",
+            "brand": "Panasonic",
+            "cat": "Appliances",
+            "price": 11490,
+            "inv": "PAN-2025-44321",
+            "wm": 12,
+            "daysToExpiry": 3,
+            "notes": "27L Convection — URGENT: claim pending",
+            "claim": "pending"
+        }
+    ],
+    "notifs": [
+        {
+            "idx": 0,
+            "type": "PRODUCT_ADDED",
+            "daysAgo": 365
+        },
+        {
+            "idx": 1,
+            "type": "30_DAY",
+            "daysAgo": 22
+        },
+        {
+            "idx": 0,
+            "type": "30_DAY",
+            "daysAgo": 8
+        },
+        {
+            "idx": 2,
+            "type": "CLAIM_EMAIL",
+            "daysAgo": 30
+        },
+        {
+            "idx": 7,
+            "type": "CLAIM_EMAIL",
+            "daysAgo": 340
+        },
+        {
+            "idx": 11,
+            "type": "7_DAY",
+            "daysAgo": 0
+        },
+        {
+            "idx": 3,
+            "type": "PRODUCT_ADDED",
+            "daysAgo": 200
+        },
+        {
+            "idx": 4,
+            "type": "PRODUCT_ADDED",
+            "daysAgo": 460
+        },
+        {
+            "idx": 10,
+            "type": "PRODUCT_ADDED",
+            "daysAgo": 150
+        }
+    ]
+}

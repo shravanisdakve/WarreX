@@ -1,74 +1,71 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-// @ts-ignore
-import { motion, AnimatePresence } from 'motion/react';
-import { ShieldCheck, Sparkles, Bell, Brain, TrendingUp, ArrowRight, CheckCircle, Zap, Shield, Clock, BarChart3, Mail, Scale, FileWarning, Users, Gavel, Heart } from 'lucide-react';
-
-const COMPETITOR_DATA = [
-    { feature: 'AI Document Quality Classifier', warrify: true, samsung: false, jiosure: false },
-    { feature: 'Multi-Brand Support', warrify: true, samsung: false, jiosure: true },
-    { feature: 'OCR Invoice Scanning', warrify: true, samsung: false, jiosure: false },
-    { feature: 'Preventive Claim Alerts', warrify: true, samsung: false, jiosure: false },
-    { feature: 'Faded Receipt Protection', warrify: true, samsung: false, jiosure: false },
-    { feature: 'UNEP-Backed Impact Tracking', warrify: true, samsung: false, jiosure: false },
-    { feature: 'Multi-Language Support', warrify: true, samsung: true, jiosure: true },
-    { feature: 'AI Claim Email Generation', warrify: true, samsung: false, jiosure: false },
-];
-
-const FEATURES = [
-    {
-        icon: Scale,
-        title: 'Consumer Justice Engine',
-        description: 'Empowers low-income consumers to fight for their legal rights. AI detects faded receipts, preserves proof, and drafts legal complaint emails.',
-        gradient: 'from-purple-500 to-indigo-600'
-    },
-    {
-        icon: FileWarning,
-        title: 'Document Quality Classifier',
-        description: 'Real ML that detects faded receipts vs. valid invoices. Alerts you before your thermal receipt becomes unreadable.',
-        gradient: 'from-amber-500 to-orange-600'
-    },
-    {
-        icon: Sparkles,
-        title: 'AI-Powered OCR',
-        description: 'Upload a photo of any invoice — even a crumpled local shop receipt. Our AI extracts product name, date, brand, and invoice number.',
-        gradient: 'from-emerald-500 to-teal-600'
-    },
-    {
-        icon: Brain,
-        title: 'Claim Intelligence Engine',
-        description: 'AI predicts when your product is likely to fail and suggests filing claims BEFORE warranty expires — so you never lose your rights.',
-        gradient: 'from-blue-500 to-cyan-600'
-    },
-    {
-        icon: Mail,
-        title: 'AI Claim Drafting',
-        description: 'Generate professional warranty claim emails in seconds. Written in proper legal language that brands take seriously.',
-        gradient: 'from-rose-500 to-pink-600'
-    },
-    {
-        icon: BarChart3,
-        title: 'UNEP Environmental Impact',
-        description: 'Every repaired device = less e-waste. Track CO₂e savings backed by UN Environment Programme data. Make your impact measurable.',
-        gradient: 'from-green-500 to-emerald-600'
-    },
-];
-
-const TESTIMONIALS = [
-    { name: 'Meera D.', text: 'My mixer grinder receipt had completely faded. The shopkeeper refused to honour the warranty. Warrify had my digital copy — Samsung repaired it for free.', role: 'Homemaker, Dharavi' },
-    { name: 'Rajesh P.', text: 'I\'m a rickshaw driver. I bought a phone worth ₹12,000 — my whole month\'s savings. When it broke, Warrify helped me file a proper claim in Hindi.', role: 'Auto Driver, Pune' },
-    { name: 'Anita K.', text: 'The AI drafted a complaint email that sounded like a lawyer wrote it. LG approved my washing machine repair within 3 days.', role: 'School Teacher, Mumbai' },
-];
+import { ShieldCheck, Sparkles, Bell, Brain, TrendingUp, ArrowRight, CheckCircle, Zap, Shield, Clock, Mail, Scale, FileWarning, Users, Gavel, Heart } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function Landing() {
+    const { t, i18n } = useTranslation();
     const [activeTestimonial, setActiveTestimonial] = useState(0);
+
+    const COMPETITOR_DATA = [
+        { label: t('comp_feature_labels.classifier'), warrify: true, samsung: false, jiosure: false },
+        { label: t('comp_feature_labels.brands'), warrify: true, samsung: false, jiosure: true },
+        { label: t('comp_feature_labels.ocr'), warrify: true, samsung: false, jiosure: false },
+        { label: t('comp_feature_labels.alerts'), warrify: true, samsung: false, jiosure: false },
+        { label: t('comp_feature_labels.faded'), warrify: true, samsung: false, jiosure: false },
+        { label: t('comp_feature_labels.lang'), warrify: true, samsung: true, jiosure: true },
+        { label: t('comp_feature_labels.draft'), warrify: true, samsung: false, jiosure: false },
+    ];
+
+    const FEATURES = [
+        {
+            icon: Scale,
+            title: t('feature_justice_title'),
+            description: t('feature_justice_desc'),
+            gradient: 'from-purple-500 to-indigo-600'
+        },
+        {
+            icon: FileWarning,
+            title: t('feature_classifier_title'),
+            description: t('feature_classifier_desc'),
+            gradient: 'from-amber-500 to-orange-600'
+        },
+        {
+            icon: Sparkles,
+            title: t('feature_ocr_title'),
+            description: t('feature_ocr_desc'),
+            gradient: 'from-emerald-500 to-teal-600'
+        },
+        {
+            icon: Brain,
+            title: t('feature_risk_title'),
+            description: t('feature_risk_desc'),
+            gradient: 'from-blue-500 to-cyan-600'
+        },
+        {
+            icon: Mail,
+            title: t('feature_draft_title'),
+            description: t('feature_draft_desc'),
+            gradient: 'from-rose-500 to-pink-600'
+        },
+    ];
+
+    const TESTIMONIALS = [
+        { name: 'Meera D.', text: t('testimonial_meera', 'My mixer grinder receipt had completely faded. The shopkeeper refused to honour the warranty. Warrify had my digital copy — Samsung repaired it for free.'), role: t('role_meera', 'Homemaker, Dharavi') },
+        { name: 'Rajesh P.', text: t('testimonial_rajesh', 'I\'m a rickshaw driver. I bought a phone worth ₹12,000 — my whole month\'s savings. When it broke, Warrify helped me file a proper claim in Hindi.'), role: t('role_rajesh', 'Auto Driver, Pune') },
+        { name: 'Anita K.', text: t('testimonial_anita', 'The AI drafted a complaint email that sounded like a lawyer wrote it. LG approved my washing machine repair within 3 days.'), role: t('role_anita', 'School Teacher, Mumbai') },
+    ];
+
+    const fNum = (num: string | number) => {
+        if (i18n.language === 'en') return num;
+        const digits: Record<string, string> = { '0': '०', '1': '१', '2': '२', '3': '३', '4': '४', '5': '५', '6': '६', '7': '७', '8': '८', '9': '९' };
+        return num.toString().replace(/\d/g, d => digits[d]);
+    };
 
     useEffect(() => {
         const interval = setInterval(() => {
             setActiveTestimonial(prev => (prev + 1) % TESTIMONIALS.length);
         }, 4000);
         return () => clearInterval(interval);
-    }, []);
+    }, [TESTIMONIALS.length]);
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 text-white overflow-x-hidden">
@@ -86,13 +83,13 @@ export default function Landing() {
                             to="/login"
                             className="px-4 py-2 text-sm font-medium text-indigo-300 hover:text-white transition-colors"
                         >
-                            Sign In
+                            {t('sign_in')}
                         </Link>
                         <Link
                             to="/signup"
                             className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-all hover:shadow-lg hover:shadow-indigo-500/25"
                         >
-                            Get Started Free
+                            {t('get_started_free')}
                         </Link>
                     </div>
                 </div>
@@ -112,19 +109,15 @@ export default function Landing() {
                 >
                     <div className="inline-flex items-center gap-2 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-full text-red-300 text-sm font-medium mb-8">
                         <Gavel className="w-4 h-4" />
-                        50% of Indian consumers are denied rights due to missing receipts
+                        {t('landing_hero_tagline')}
                     </div>
 
                     <h1 className="text-5xl sm:text-7xl font-black tracking-tight leading-tight mb-6">
-                        Your warranty is your{' '}
-                        <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                            legal right
-                        </span>
+                        {t('landing_hero_title')}
                     </h1>
 
                     <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-                        Every year, <span className="text-white font-semibold">millions of Indians</span> are denied warranty claims because their thermal receipts faded.
-                        Warrify fights back — digitizing your proof, predicting failures, and drafting legal complaint emails so <span className="text-white font-semibold">no one is denied their consumer rights</span>.
+                        {t('landing_hero_subtitle')}
                     </p>
 
                     <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -132,18 +125,18 @@ export default function Landing() {
                             to="/signup"
                             className="group inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-lg font-bold rounded-2xl transition-all hover:shadow-2xl hover:shadow-indigo-500/30 hover:scale-105"
                         >
-                            Protect Your Rights — Free
+                            {t('landing_cta_btn')}
                             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                         </Link>
-                        <p className="text-sm text-slate-500">No credit card • 100% free • Hindi/Marathi supported</p>
+                        <p className="text-sm text-slate-500">{t('landing_no_card')}</p>
                     </div>
 
                     {/* Stats bar — Consumer Justice data */}
                     <div className="mt-16 grid grid-cols-3 gap-8 max-w-lg mx-auto">
                         {[
-                            { value: '₹8,000Cr', label: 'Lost annually to missed claims' },
-                            { value: '50%', label: 'Denied due to faded receipts' },
-                            { value: '18kg', label: 'CO₂e saved per device (UNEP)' },
+                            { value: fNum('₹8,000Cr'), label: t('lost_annually') },
+                            { value: fNum('50%'), label: t('denied_faded') },
+                            { value: fNum('3+'), label: t('ai_models_claims') },
                         ].map((stat, i) => (
                             <motion.div
                                 key={i}
@@ -170,18 +163,18 @@ export default function Landing() {
                         className="text-center mb-12"
                     >
                         <h2 className="text-3xl sm:text-4xl font-black mb-4">
-                            The <span className="text-red-400">Broken System</span>
+                            {t('broken_system_title')}
                         </h2>
                         <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-                            India's warranty redressal system fails the people who need it most.
+                            {t('broken_system_subtitle')}
                         </p>
                     </motion.div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {[
-                            { icon: FileWarning, stat: '83%', text: 'of thermal receipts become unreadable within 6 months', color: 'text-amber-400' },
-                            { icon: Users, stat: '50%', text: 'of consumers can\'t claim warranties due to missing documentation', color: 'text-red-400' },
-                            { icon: Heart, stat: '₹8,000Cr', text: 'lost annually by Indian consumers from expired/unclaimed warranties', color: 'text-pink-400' },
+                            { icon: FileWarning, stat: fNum('83%'), text: t('faded_stat_desc'), color: 'text-amber-400' },
+                            { icon: Users, stat: fNum('50%'), text: t('missing_doc_stat_desc'), color: 'text-red-400' },
+                            { icon: Heart, stat: fNum('₹8,000Cr'), text: t('lost_annually_stat_desc'), color: 'text-pink-400' },
                         ].map((item, i) => (
                             <motion.div
                                 key={i}
@@ -210,10 +203,10 @@ export default function Landing() {
                         className="text-center mb-16"
                     >
                         <h2 className="text-3xl sm:text-4xl font-black mb-4">
-                            How <span className="text-indigo-400">Warrify</span> Fights Back
+                            {t('how_warrify_fights')}
                         </h2>
                         <p className="text-slate-400 text-lg max-w-xl mx-auto">
-                            Not a convenience tool. A consumer empowerment platform.
+                            {t('empowerment_platform')}
                         </p>
                     </motion.div>
 
@@ -248,9 +241,9 @@ export default function Landing() {
                         className="text-center mb-12"
                     >
                         <h2 className="text-3xl sm:text-4xl font-black mb-4">
-                            Warrify vs <span className="text-slate-400">The Rest</span>
+                            {t('competitor_comparison_title')}
                         </h2>
-                        <p className="text-slate-400">No other platform addresses the documentation gap.</p>
+                        <p className="text-slate-400">{t('documentation_gap_desc')}</p>
                     </motion.div>
 
                     <motion.div
@@ -260,7 +253,7 @@ export default function Landing() {
                         className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden"
                     >
                         <div className="grid grid-cols-4 gap-0 text-sm">
-                            <div className="p-4 font-semibold text-slate-400 border-b border-white/10">Feature</div>
+                            <div className="p-4 font-semibold text-slate-400 border-b border-white/10">{t('feature_label', 'Feature')}</div>
                             <div className="p-4 font-bold text-indigo-400 text-center border-b border-white/10 bg-indigo-500/5">Warrify</div>
                             <div className="p-4 font-semibold text-slate-500 text-center border-b border-white/10">Samsung Members</div>
                             <div className="p-4 font-semibold text-slate-500 text-center border-b border-white/10">JioSure</div>
@@ -268,7 +261,7 @@ export default function Landing() {
                             {COMPETITOR_DATA.map((row, i) => (
                                 <React.Fragment key={i}>
                                     <div className={`p-4 text-slate-300 ${i % 2 === 0 ? 'bg-white/[0.02]' : ''} border-b border-white/5`}>
-                                        {row.feature}
+                                        {row.label}
                                     </div>
                                     <div className={`p-4 text-center ${i % 2 === 0 ? 'bg-indigo-500/[0.03]' : 'bg-indigo-500/[0.01]'} border-b border-white/5`}>
                                         {row.warrify ? <CheckCircle className="w-5 h-5 text-emerald-400 mx-auto" /> : <span className="text-slate-600">—</span>}
@@ -289,8 +282,8 @@ export default function Landing() {
             {/* Testimonials */}
             <section className="py-20 px-6">
                 <div className="max-w-2xl mx-auto text-center">
-                    <h2 className="text-3xl font-black mb-4">Real People, Real Justice</h2>
-                    <p className="text-slate-400 mb-12 text-sm">Stories from consumers who fought back with Warrify.</p>
+                    <h2 className="text-3xl font-black mb-4">{t('real_justice_title')}</h2>
+                    <p className="text-slate-400 mb-12 text-sm">{t('real_justice_subtitle')}</p>
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={activeTestimonial}
@@ -327,24 +320,24 @@ export default function Landing() {
                         whileInView={{ opacity: 1 }}
                         className="text-center mb-16"
                     >
-                        <h2 className="text-3xl font-black mb-4">The Warrify <span className="text-purple-400">Roadmap</span></h2>
-                        <p className="text-slate-400">Building the future of consumer rights protection.</p>
+                        <h2 className="text-3xl font-black mb-4">{t('roadmap_title')}</h2>
+                        <p className="text-slate-400">{t('building_future_rights')}</p>
                     </motion.div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="p-8 bg-white/5 rounded-3xl border border-white/10 hover:bg-white/10 transition-colors">
                             <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                                <span className="px-2 py-1 bg-indigo-500 rounded text-[10px] uppercase font-black">Phase 2</span>
-                                Consumer Court Integration
+                                <span className="px-2 py-1 bg-indigo-500 rounded text-[10px] uppercase font-black">{fNum('Phase 2')}</span>
+                                {t('roadmap_p2_title')}
                             </h3>
-                            <p className="text-sm text-slate-400 leading-relaxed">File formal consumer complaints via the National Consumer Helpline (1915) directly through Warrify. Auto-populate complaint forms with digitized warranty data.</p>
+                            <p className="text-sm text-slate-400 leading-relaxed">{t('roadmap_p2_desc')}</p>
                         </div>
                         <div className="p-8 bg-white/5 rounded-3xl border border-white/10 hover:bg-white/10 transition-colors">
                             <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                                <span className="px-2 py-1 bg-purple-500 rounded text-[10px] uppercase font-black">Phase 3</span>
-                                Rural India Outreach
+                                <span className="px-2 py-1 bg-purple-500 rounded text-[10px] uppercase font-black">{fNum('Phase 3')}</span>
+                                {t('roadmap_p3_title')}
                             </h3>
-                            <p className="text-sm text-slate-400 leading-relaxed">WhatsApp-based warranty registration for users without smartphones apps. Voice-based claim filing in 10+ Indian languages. Offline-first architecture.</p>
+                            <p className="text-sm text-slate-400 leading-relaxed">{t('roadmap_p3_desc')}</p>
                         </div>
                     </div>
                 </div>
@@ -360,45 +353,22 @@ export default function Landing() {
                 >
                     <Scale className="w-14 h-14 text-indigo-400 mx-auto mb-6" />
                     <h2 className="text-3xl sm:text-4xl font-black mb-4">
-                        Every Consumer Deserves Justice
+                        {t('every_consumer_deserves')}
                     </h2>
                     <p className="text-slate-400 text-lg mb-8 max-w-lg mx-auto">
-                        Don't let a faded receipt rob you of your rights. Join the movement for consumer empowerment.
+                        {t('justice_desc')}
                     </p>
                     <Link
                         to="/signup"
                         className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-lg font-bold rounded-2xl transition-all hover:shadow-2xl hover:shadow-indigo-500/30"
                     >
-                        Start Protecting Your Rights
+                        {t('start_protecting')}
                         <ArrowRight className="w-5 h-5" />
                     </Link>
                 </motion.div>
             </section>
 
-            {/* Footer */}
-            <footer className="border-t border-white/5 py-12 px-6">
-                <div className="max-w-6xl mx-auto">
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                        <div className="flex items-center gap-2">
-                            <ShieldCheck className="w-5 h-5 text-indigo-400" />
-                            <span className="font-bold text-slate-300">Warrify</span>
-                            <span className="text-slate-600 text-sm ml-2">© {new Date().getFullYear()}</span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-6 text-xs text-slate-500">
-                            <span className="flex items-center gap-1.5 px-3 py-1 bg-white/5 rounded-full border border-white/10">
-                                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                                All Systems Operational
-                            </span>
-                            <span>React 19 • TypeScript • Node.js • SQLite • Gemini AI • Tesseract OCR • UNEP Data</span>
-                        </div>
-                    </div>
-                    <div className="mt-6 pt-6 border-t border-white/5 text-center">
-                        <p className="text-xs text-slate-600">
-                            Built with ❤️ for Smart India Hackathon 2025 • Environmental Impact: UNEP-backed CO₂e lifecycle methodology • Consumer data from NCDRC & LocalCircles surveys
-                        </p>
-                    </div>
-                </div>
-            </footer>
+
         </div>
     );
 }

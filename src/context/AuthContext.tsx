@@ -39,7 +39,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           // Sync user to Supabase backend
           const res = await axios.post('/api/auth/sync-user', {
-            name: firebaseUser.displayName || 'User',
+            name: firebaseUser.displayName,
             email: firebaseUser.email || '',
           });
 
@@ -109,7 +109,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Sync user to Supabase backend
     const res = await axios.post('/api/auth/sync-user', {
-      name: firebaseUser.displayName || 'User',
+      name: firebaseUser.displayName,
       email: firebaseUser.email || '',
     });
 

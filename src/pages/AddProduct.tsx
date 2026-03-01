@@ -6,9 +6,21 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'motion/react';
 import { Upload, Save, Loader, Sparkles, FileText, X, AlertTriangle, ShieldCheck, ShieldAlert, FileWarning } from 'lucide-react';
 import { addMonths, format, parse, isValid } from 'date-fns';
+import { BRANDS, CATEGORIES, WARRANTY_MONTH_OPTIONS } from '../constants/productCatalog';
 
-const BRANDS = ["Samsung", "LG", "Sony", "Apple", "HP", "Dell", "Lenovo", "Whirlpool", "Bosch", "OnePlus", "Xiaomi", "Realme", "Panasonic", "Godrej", "Voltas", "Haier", "Asus", "Acer"];
-const CATEGORIES = ["Electronics", "Appliances", "Furniture", "Vehicle", "Accessories", "Other"];
+const DEMO_INVOICES = [
+  { name: 'iPhone 15 Pro', file: 'apple_iphone_15.jpg', brand: 'Apple' },
+  { name: 'Samsung S24', file: 'samsung_invoice.png', brand: 'Samsung' },
+  { name: 'Sony Headphones', file: 'sony_receipt.png', brand: 'Sony' },
+  { name: 'Dyson Vacuum', file: 'dyson_vacuum.jpg', brand: 'Dyson' },
+  { name: 'Bosch Dishwasher', file: 'bosch_dishwasher.jpg', brand: 'Bosch' },
+  { name: 'HP Spectre', file: 'hp_laptop_spectre.jpg', brand: 'HP' },
+  { name: 'Nikon Camera', file: 'nikon_z6_camera.jpg', brand: 'Nikon' },
+  { name: 'Philips Fryer', file: 'philips_airfryer.jpg', brand: 'Philips' },
+  { name: 'Nintendo Switch', file: 'nintendo_switch.jpg', brand: 'Nintendo' },
+];
+
+
 
 // --- Robust OCR parsing helpers ---
 
@@ -171,6 +183,30 @@ export default function AddProduct() {
       }
     }
   };
+
+  const handleSelectDemo = async (demoFile: string) => {
+    setOcrProcessing(true);
+    setAnalyzingDoc(true);
+
+    try {
+      const response = await fetch(`/demo-invoices/${demoFile}`);
+      const blob = await response.blob();
+      const file = new File([blob], demoFile, { type: blob.type });
+
+      setInvoiceFile(file);
+      setPreviewUrl(`/demo-invoices/${demoFile}`);
+      setDocQuality(null);
+
+      // Trigger logic
+      processOCR(file);
+      analyzeDocumentQuality(file);
+    } catch (error) {
+      console.error('Failed to load demo invoice:', error);
+      setOcrProcessing(false);
+      setAnalyzingDoc(false);
+    }
+  };
+
 
   const removeFile = () => {
     setInvoiceFile(null);
@@ -364,6 +400,43 @@ export default function AddProduct() {
             <p className="mt-2 text-xs text-slate-500">Supported: JPEG, PNG, WebP (Max 5MB) • AI-powered text extraction</p>
           </div>
 
+          {!invoiceFile && (
+            <div className="mt-8 border-t border-white/5 pt-6">
+              <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-4 flex items-center justify-center gap-2">
+                <Sparkles className="w-3 h-3" />
+                Quick Demo Gallery
+                <Sparkles className="w-3 h-3" />
+              </p>
+              <div className="grid grid-cols-4 sm:grid-cols-7 gap-3">
+                {DEMO_INVOICES.map((demo) => (
+                  <button
+                    key={demo.file}
+                    type="button"
+                    onClick={() => handleSelectDemo(demo.file)}
+                    className="group relative flex flex-col items-center gap-1.5 transition-all hover:scale-110"
+                    title={`Try ${demo.name} invoice`}
+                  >
+                    <div className="w-full aspect-[3/4] rounded-lg border border-white/10 overflow-hidden bg-white/5 group-hover:border-indigo-500/50 shadow-sm transition-all">
+                      <img
+                        src={`/demo-invoices/${demo.file}`}
+                        alt={demo.name}
+                        className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
+                      />
+                      <div className="absolute inset-0 bg-indigo-500/0 group-hover:bg-indigo-500/10 transition-colors" />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-500 group-hover:text-indigo-400 truncate w-full text-center">
+                      {demo.brand}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-4 text-[11px] text-slate-500 italic">
+                Click a sample above to see the AI Document Classifier & OCR in action.
+              </p>
+            </div>
+          )}
+
+
           {/* Preview */}
           {invoiceFile && !ocrProcessing && (
             <div className="mt-4 flex items-center justify-center gap-2">
@@ -407,7 +480,7 @@ export default function AddProduct() {
           {/* OCR Results */}
           {ocrHighlights.length > 0 && (
             <div className="mt-4 text-left bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3">
-              <p className="text-xs font-semibold text-emerald-400 mb-1">✨ Auto-detected from invoice:</p>
+              <p className="text-xs font-semibold text-emerald-400 mb-1">✨ {t('auto_detected_helper')}</p>
               {ocrHighlights.map((h, i) => (
                 <p key={i} className="text-xs text-emerald-300">{h}</p>
               ))}
@@ -418,7 +491,7 @@ export default function AddProduct() {
           {analyzingDoc && (
             <div className="mt-4 flex items-center justify-center gap-2 text-sm text-indigo-400">
               <Loader className="animate-spin w-4 h-4" />
-              <span>Analyzing document quality...</span>
+              <span>{t('analyzing_doc_quality')}</span>
             </div>
           )}
           {docQuality && !analyzingDoc && (
@@ -439,10 +512,10 @@ export default function AddProduct() {
                   'faded_receipt': 'text-amber-400',
                   'poor_quality': 'text-red-400',
                 }[docQuality.classification as string]}`}>
-                  {docQuality.classification === 'valid_invoice' ? '✅ Valid Invoice' :
-                    docQuality.classification === 'good_quality' ? '📄 Good Quality' :
-                      docQuality.classification === 'faded_receipt' ? '⚠️ Faded Receipt Detected' :
-                        '❌ Poor Quality'}
+                  {docQuality.classification === 'valid_invoice' ? `✅ ${t('valid_invoice_label')}` :
+                    docQuality.classification === 'good_quality' ? `📄 ${t('good_quality_label')}` :
+                      docQuality.classification === 'faded_receipt' ? `⚠️ ${t('faded_receipt_label')}` :
+                        `❌ ${t('poor_quality_label')}`}
                 </span>
                 <span className={`ml-auto px-2 py-0.5 rounded-full text-xs font-bold ${{
                   'valid_invoice': 'bg-emerald-500/20 text-emerald-400',
@@ -450,11 +523,11 @@ export default function AddProduct() {
                   'faded_receipt': 'bg-amber-500/20 text-amber-400',
                   'poor_quality': 'bg-red-500/20 text-red-400',
                 }[docQuality.classification as string]}`}>
-                  {docQuality.qualityScore}% Quality
+                  {docQuality.qualityScore}% {t('quality_label')}
                 </span>
               </div>
               {docQuality.isThermalReceipt && (
-                <p className="text-xs text-amber-400 font-medium mb-1">🧾 Thermal receipt detected — these fade within 3-6 months!</p>
+                <p className="text-xs text-amber-400 font-medium mb-1">🧾 {t('faded_receipt_warning')}</p>
               )}
               <p className="text-xs text-slate-300 font-medium leading-relaxed">{docQuality.consumerJusticeMessage}</p>
               {docQuality.suggestions?.length > 0 && (
@@ -472,7 +545,7 @@ export default function AddProduct() {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 gap-y-5 gap-x-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <label htmlFor="productName" className="block text-sm font-medium text-slate-400 mb-1">Product Name *</label>
+              <label htmlFor="productName" className="block text-sm font-medium text-slate-400 mb-1">{t('product_name_label')} *</label>
               <input
                 id="productName"
                 name="productName"
@@ -486,13 +559,13 @@ export default function AddProduct() {
             </div>
 
             <div>
-              <label htmlFor="brand" className="block text-sm font-medium text-slate-400 mb-1">Brand</label>
+              <label htmlFor="brand" className="block text-sm font-medium text-slate-400 mb-1">{t('brand_label')}</label>
               <input
                 id="brand"
                 name="brand"
                 type="text"
                 list="brands"
-                placeholder="Select or type brand"
+                placeholder={t('select_brand_placeholder')}
                 className="block w-full bg-white/5 border border-white/10 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 text-sm text-slate-200 placeholder-slate-600 transition-all hover:border-white/20"
                 value={formData.brand}
                 onChange={e => setFormData({ ...formData, brand: e.target.value })}
@@ -503,7 +576,7 @@ export default function AddProduct() {
             </div>
 
             <div>
-              <label htmlFor="category" className="block text-sm font-medium text-slate-400 mb-1">Category *</label>
+              <label htmlFor="category" className="block text-sm font-medium text-slate-400 mb-1">{t('category_label')} *</label>
               <select
                 id="category"
                 name="category"
@@ -516,7 +589,7 @@ export default function AddProduct() {
             </div>
 
             <div>
-              <label htmlFor="purchaseDate" className="block text-sm font-medium text-slate-400 mb-1">Purchase Date *</label>
+              <label htmlFor="purchaseDate" className="block text-sm font-medium text-slate-400 mb-1">{t('purchase_date_label')} *</label>
               <input
                 id="purchaseDate"
                 name="purchaseDate"
@@ -529,7 +602,7 @@ export default function AddProduct() {
             </div>
 
             <div>
-              <label htmlFor="warrantyMonths" className="block text-sm font-medium text-slate-400 mb-1">Warranty Period *</label>
+              <label htmlFor="warrantyMonths" className="block text-sm font-medium text-slate-400 mb-1">{t('warranty_period_label')} *</label>
               <select
                 id="warrantyMonths"
                 name="warrantyMonths"
@@ -537,12 +610,12 @@ export default function AddProduct() {
                 value={formData.warrantyMonths}
                 onChange={e => setFormData({ ...formData, warrantyMonths: parseInt(e.target.value) })}
               >
-                {[3, 6, 12, 18, 24, 36, 48, 60].map(m => <option key={m} value={m} className="bg-[#151c2e]">{m} Months</option>)}
+                {WARRANTY_MONTH_OPTIONS.map(m => <option key={m} value={m} className="bg-[#151c2e]">{m} {t('months')}</option>)}
               </select>
             </div>
 
             <div className="sm:col-span-2">
-              <label htmlFor="invoiceNumber" className="block text-sm font-medium text-slate-400 mb-1">Invoice Number</label>
+              <label htmlFor="invoiceNumber" className="block text-sm font-medium text-slate-400 mb-1">{t('invoice_number_label')}</label>
               <input
                 id="invoiceNumber"
                 name="invoiceNumber"
@@ -566,7 +639,7 @@ export default function AddProduct() {
             </div>
 
             <div>
-              <label htmlFor="purchasePrice" className="block text-sm font-medium text-slate-400 mb-1">Purchase Price (₹)</label>
+              <label htmlFor="purchasePrice" className="block text-sm font-medium text-slate-400 mb-1">{t('purchase_price_label')} (₹)</label>
               <input
                 id="purchasePrice"
                 name="purchasePrice"
@@ -579,7 +652,7 @@ export default function AddProduct() {
             </div>
 
             <div className="sm:col-span-2">
-              <label htmlFor="notes" className="block text-sm font-medium text-slate-400 mb-1">Notes</label>
+              <label htmlFor="notes" className="block text-sm font-medium text-slate-400 mb-1">{t('notes_label')}</label>
               <textarea
                 id="notes"
                 name="notes"
@@ -598,7 +671,7 @@ export default function AddProduct() {
               onClick={() => navigate('/dashboard')}
               className="mr-3 px-5 py-2.5 border border-white/10 rounded-xl text-sm font-semibold text-slate-400 bg-white/5 hover:bg-white/10 hover:text-slate-200 active:scale-95 transition-all btn-tactile"
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               type="submit"

@@ -3,8 +3,9 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { Search, AlertTriangle, CheckCircle, Clock, Filter, X, ShieldCheck, ShieldAlert, ShieldX, Sparkles, Activity, Globe, IndianRupee, Brain, Info, TrendingDown, Package, ArrowUpRight, Zap, BarChart3 } from 'lucide-react';
+import { Search, AlertTriangle, CheckCircle, Clock, Filter, X, ShieldCheck, ShieldAlert, ShieldX, Sparkles, Activity, IndianRupee, Brain, TrendingDown, Package, ArrowUpRight, Zap, Leaf, Recycle, BarChart3, Plus } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
+import { FILTER_CATEGORIES, BRAND_LOGOS, CATEGORY_ICONS } from '../constants/productCatalog';
 
 interface Product {
   id: number;
@@ -16,38 +17,6 @@ interface Product {
   purchase_price: number;
 }
 
-const CATEGORIES = ["all", "Electronics", "Appliances", "Furniture", "Vehicle", "Accessories", "Other"];
-
-const BRAND_LOGOS: Record<string, string> = {
-  'Samsung': '🔵',
-  'LG': '🔴',
-  'Sony': '⚫',
-  'Apple': '🍎',
-  'HP': '💻',
-  'Dell': '🖥️',
-  'Lenovo': '🔷',
-  'Whirlpool': '🌀',
-  'Bosch': '🔧',
-  'OnePlus': '🔴',
-  'Xiaomi': '🟠',
-  'Realme': '🟡',
-  'Panasonic': '🔵',
-  'Godrej': '🟢',
-  'Voltas': '❄️',
-  'Haier': '🏠',
-  'Asus': '🎮',
-  'Acer': '💚',
-};
-
-const CATEGORY_ICONS: Record<string, string> = {
-  'Electronics': '📱',
-  'Appliances': '🏠',
-  'Furniture': '🪑',
-  'Vehicle': '🚗',
-  'Accessories': '⌚',
-  'Other': '📦',
-};
-
 export default function Dashboard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState('');
@@ -57,7 +26,7 @@ export default function Dashboard() {
   const [dateTo, setDateTo] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [showMissedClaims, setShowMissedClaims] = useState(false);
-  const [showImpactTooltip, setShowImpactTooltip] = useState(false);
+
   const [aiInsights, setAiInsights] = useState<string[]>([]);
   const { t, i18n } = useTranslation();
 
@@ -148,37 +117,6 @@ export default function Dashboard() {
   const protectedValue = activeProductsList.reduce((sum, p) => sum + (p.purchase_price || 0), 0);
   const missedValue = expiredProductsList.reduce((sum, p) => sum + (p.purchase_price || 0), 0);
 
-  // UNEP Environmental Impact
-  const UNEP_CO2E_PER_YEAR: Record<string, number> = {
-    'Electronics': 18, 'Appliances': 65, 'Vehicle': 120, 'Furniture': 25,
-  };
-  const EWASTE_KG: Record<string, number> = {
-    'Electronics': 0.2, 'Appliances': 1.5, 'Vehicle': 3.0, 'Furniture': 0.5,
-  };
-
-  const calculateImpactStats = () => {
-    let totalCo2Saved = 0;
-    let totalEWasteSaved = 0;
-    let activeCount = 0;
-
-    products.forEach(p => {
-      const isExpired = differenceInDays(parseISO(p.expiry_date), new Date()) < 0;
-      if (!isExpired) {
-        totalCo2Saved += UNEP_CO2E_PER_YEAR[p.category] || 10;
-        totalEWasteSaved += EWASTE_KG[p.category] || 0.2;
-        activeCount++;
-      }
-    });
-
-    const score = products.length > 0
-      ? Math.min(100, Math.max(10, Math.round((activeCount / products.length) * 100)))
-      : 0;
-
-    return { score, eWaste: totalEWasteSaved.toFixed(1), co2: totalCo2Saved.toFixed(1) };
-  };
-
-  const impact = calculateImpactStats();
-
   // Helper to enforce devanagari numerals
   const fNum = (num: number | string) => {
     if (i18n.language === 'en') return num;
@@ -189,7 +127,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-5">
       {/* ===== COMPACT OVERVIEW GRID ===== */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         {/* Total */}
         <motion.div
           whileHover={{ y: -4, scale: 1.03 }}
@@ -241,6 +179,24 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
+        {/* Protected Value */}
+        <motion.div
+          whileHover={{ y: -4, scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          className="card-interactive p-4 cursor-default group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center group-hover:bg-purple-500/20 transition-colors icon-bounce">
+              <IndianRupee className="w-4 h-4 text-purple-400" />
+            </div>
+            <div>
+              <p className="text-xl font-bold text-purple-400">{protectedValue > 0 ? `${fNum((protectedValue / 1000).toFixed(0))}K` : fNum(0)}</p>
+              <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{t('protected')}</p>
+            </div>
+          </div>
+        </motion.div>
+
+
         {/* Expired */}
         <motion.button
           onClick={() => expiredProducts > 0 && setShowMissedClaims(true)}
@@ -257,116 +213,32 @@ export default function Dashboard() {
               <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{t('expired')}</p>
             </div>
           </div>
-          {expiredProducts > 0 && <p className="text-[9px] text-red-400/70 mt-2 group-hover:text-red-400 transition-colors font-medium">Click for details →</p>}
+          {expiredProducts > 0 && <p className="text-[9px] text-red-400/70 mt-2 group-hover:text-red-400 transition-colors font-medium">{t('click_for_details', 'Click for details')} →</p>}
         </motion.button>
-
-        {/* Protected Value */}
-        <motion.div
-          whileHover={{ y: -4, scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          className="card-interactive p-4 cursor-default group col-span-2 sm:col-span-1"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center group-hover:bg-purple-500/20 transition-colors icon-bounce">
-              <IndianRupee className="w-4 h-4 text-purple-400" />
-            </div>
-            <div>
-              <p className="text-xl font-bold text-purple-400">{protectedValue > 0 ? `${fNum((protectedValue / 1000).toFixed(0))}K` : fNum(0)}</p>
-              <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Protected</p>
-            </div>
-          </div>
-        </motion.div>
       </div>
 
-      {/* ===== AI INSIGHTS + IMPACT — Side by Side ===== */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* AI Insights */}
-        {aiInsights.length > 0 && (
-          <motion.div
-            whileHover={{ scale: 1.005 }}
-            className="card-interactive p-5 relative overflow-hidden group"
-          >
-            <div className="absolute top-[-30%] right-[-15%] w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl group-hover:bg-indigo-500/15 transition-all duration-700 pointer-events-none" />
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
-                    <Brain className="w-4 h-4 text-indigo-400" />
-                  </div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400">{t('ai_insights_title') || 'AI Insights'}</h3>
-                </div>
-                <Link to="/b2b" className="text-[10px] bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-lg border border-white/10 hover:border-indigo-500/30 transition-all flex items-center gap-1 font-bold text-slate-400 hover:text-indigo-400 btn-tactile">
-                  <Package className="w-3 h-3" /> {t('b2b_mode') || 'B2B Mode'}
-                </Link>
-              </div>
-              <div className="space-y-2">
-                {aiInsights.slice(0, 3).map((insight, i) => (
-                  <p key={i} className="text-sm text-slate-400 leading-relaxed">{insight}</p>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Social Impact (compact) */}
+      {/* ===== AI INSIGHTS ===== */}
+      {aiInsights.length > 0 && (
         <motion.div
           whileHover={{ scale: 1.005 }}
           className="card-interactive p-5 relative overflow-hidden group"
         >
-          <div className="absolute top-[-30%] right-[-15%] w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl group-hover:bg-emerald-500/15 transition-all duration-700 pointer-events-none" />
+          <div className="absolute top-[-30%] right-[-15%] w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl group-hover:bg-indigo-500/15 transition-all duration-700 pointer-events-none" />
           <div className="relative z-10">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                  <Globe className="w-4 h-4 text-emerald-400" />
-                </div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400">{t('social_impact')}</h3>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
+                <Brain className="w-4 h-4 text-indigo-400" />
               </div>
-              <button
-                onClick={() => setShowImpactTooltip(!showImpactTooltip)}
-                className="p-1 rounded-lg hover:bg-white/5 transition-colors btn-tactile"
-                title="How is this calculated?"
-              >
-                <Info className="w-3.5 h-3.5 text-slate-500 hover:text-emerald-400 transition-colors" />
-              </button>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400">{t('ai_insights_title')}</h3>
             </div>
-
-            {showImpactTooltip && (
-              <div className="mb-3 bg-[#0a0e1a] text-white text-xs rounded-xl p-3 border border-emerald-500/20">
-                <p className="font-bold mb-1 text-emerald-400">📊 UNEP-Backed Methodology:</p>
-                <p className="text-slate-400">• Electronics: 18 kg CO₂e/year • Appliances: 65 kg • Vehicles: 120 kg</p>
-                <p className="text-slate-500 mt-1 text-[9px]">Source: UN Environment Programme 2024</p>
-              </div>
-            )}
-
-            <div className="grid grid-cols-3 gap-3">
-              {/* Score */}
-              <div className="flex flex-col items-center gap-1 p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/[0.07] hover:border-emerald-500/20 transition-all">
-                <div className="relative w-12 h-12">
-                  <svg className="w-12 h-12 transform -rotate-90">
-                    <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-white/5" />
-                    <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="4" fill="transparent" strokeDasharray={125.66} strokeDashoffset={125.66 * (1 - impact.score / 100)} className="text-emerald-400 transition-all duration-1000 ease-out" />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center font-black text-sm text-slate-200">{fNum(impact.score)}</div>
-                </div>
-                <span className="text-[9px] font-bold text-slate-500 uppercase">Score</span>
-              </div>
-
-              {/* E-Waste */}
-              <div className="flex flex-col items-center gap-1 p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/[0.07] hover:border-emerald-500/20 transition-all">
-                <p className="text-xl font-black text-emerald-400">{fNum(impact.eWaste)}</p>
-                <span className="text-[9px] font-bold text-slate-500 uppercase">{t('e_waste')}</span>
-              </div>
-
-              {/* CO2 */}
-              <div className="flex flex-col items-center gap-1 p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/[0.07] hover:border-emerald-500/20 transition-all">
-                <p className="text-xl font-black text-emerald-400">{fNum(impact.co2)}</p>
-                <span className="text-[9px] font-bold text-slate-500 uppercase">{t('co2_reduced')}</span>
-              </div>
+            <div className="space-y-2">
+              {aiInsights.slice(0, 3).map((insight, i) => (
+                <p key={i} className="text-sm text-slate-400 leading-relaxed">{insight}</p>
+              ))}
             </div>
           </div>
         </motion.div>
-      </div>
+      )}
 
       {/* ===== Missed Claims Modal ===== */}
       {showMissedClaims && (
@@ -379,7 +251,7 @@ export default function Dashboard() {
           >
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-                <TrendingDown className="w-5 h-5 text-red-400" /> {t('missed_claims') || 'Missed Claims'}
+                <TrendingDown className="w-5 h-5 text-red-400" /> {t('missed_claims')}
               </h3>
               <button onClick={() => setShowMissedClaims(false)} className="p-1.5 rounded-lg hover:bg-white/5 transition-colors btn-tactile">
                 <X className="w-5 h-5 text-slate-500" />
@@ -388,7 +260,7 @@ export default function Dashboard() {
             {missedValue > 0 && (
               <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-4">
                 <p className="text-sm text-red-300 font-medium">
-                  {t('potential_missed_claims') || 'Potential missed claims'}: <span className="font-bold text-lg text-red-400">₹{missedValue.toLocaleString('en-IN')}</span>
+                  {t('potential_missed_claims')}: <span className="font-bold text-lg text-red-400">₹{missedValue.toLocaleString('en-IN')}</span>
                 </p>
               </div>
             )}
@@ -400,7 +272,7 @@ export default function Dashboard() {
                     <div className="flex justify-between items-center">
                       <div>
                         <p className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">{BRAND_LOGOS[p.brand] || '📦'} {p.product_name}</p>
-                        <p className="text-xs text-slate-500">{t('expired') || 'Expired'} {fNum(daysAgo)} {t('days_ago') || 'days ago'}</p>
+                        <p className="text-xs text-slate-500">{t('expired')} {fNum(daysAgo)} {t('days_ago')}</p>
                       </div>
                       {p.purchase_price > 0 && (
                         <p className="text-sm font-bold text-red-400">₹{fNum(p.purchase_price.toLocaleString('en-IN'))}</p>
@@ -447,7 +319,7 @@ export default function Dashboard() {
             className={`px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 btn-tactile ${showFilters || hasActiveFilters ? 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 shadow-sm shadow-indigo-500/10' : 'bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10 hover:text-slate-200'}`}
           >
             <Filter className="w-3.5 h-3.5" />
-            {t('filters') || 'Filters'}
+            {t('filters')}
             {hasActiveFilters && <span className="px-1.5 py-0.5 bg-indigo-500 text-white text-[9px] rounded-full font-bold">!</span>}
           </motion.button>
         </div>
@@ -461,16 +333,16 @@ export default function Dashboard() {
       >
         <div className="bg-[#151c2e] rounded-xl border border-indigo-500/10 p-4 shadow-lg mb-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-medium text-slate-300">{t('advanced_filters') || 'Advanced Filters'}</p>
+            <p className="text-sm font-medium text-slate-300">{t('advanced_filters')}</p>
             {hasActiveFilters && (
               <button onClick={clearFilters} className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 font-medium hover:bg-red-500/10 px-2 py-1 rounded-lg transition-all btn-tactile">
-                <X className="w-3 h-3" /> Clear all
+                <X className="w-3 h-3" /> {t('clear_all')}
               </button>
             )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label htmlFor="category" className="block text-xs font-semibold text-slate-500 mb-1">Category</label>
+              <label htmlFor="category" className="block text-xs font-semibold text-slate-500 mb-1">{t('category_label')}</label>
               <select
                 id="category"
                 name="category"
@@ -478,11 +350,11 @@ export default function Dashboard() {
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all hover:border-white/20"
               >
-                {CATEGORIES.map(c => <option key={c} value={c} className="bg-[#151c2e]">{c === 'all' ? 'All Categories' : c}</option>)}
+                {FILTER_CATEGORIES.map(c => <option key={c} value={c} className="bg-[#151c2e]">{c === 'all' ? t('all_categories') : c}</option>)}
               </select>
             </div>
             <div>
-              <label htmlFor="dateFrom" className="block text-xs font-semibold text-slate-500 mb-1">Purchased From</label>
+              <label htmlFor="dateFrom" className="block text-xs font-semibold text-slate-500 mb-1">{t('purchased_from')}</label>
               <input
                 id="dateFrom"
                 name="dateFrom"
@@ -493,7 +365,7 @@ export default function Dashboard() {
               />
             </div>
             <div>
-              <label htmlFor="dateTo" className="block text-xs font-semibold text-slate-500 mb-1">Purchased To</label>
+              <label htmlFor="dateTo" className="block text-xs font-semibold text-slate-500 mb-1">{t('purchased_to')}</label>
               <input
                 id="dateTo"
                 name="dateTo"
@@ -511,11 +383,21 @@ export default function Dashboard() {
       <div className="bg-[#151c2e]/60 backdrop-blur-xl border border-indigo-500/10 shadow-lg rounded-2xl overflow-visible">
         <ul className="divide-y divide-white/5">
           {products.length === 0 ? (
-            <li className="px-6 py-16 text-center">
-              <ShieldCheck className="w-12 h-12 mx-auto text-slate-700 mb-4" />
-              <p className="text-slate-500 mb-2">{t('no_products') || 'No products found.'}</p>
-              <Link to="/add-product" className="text-indigo-400 hover:text-indigo-300 text-sm font-medium hover:underline transition-colors">
-                + {t('add_first_product') || 'Add your first product'}
+            <li className="px-6 py-20 flex flex-col items-center justify-center text-center">
+              <div className="w-24 h-24 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-full flex items-center justify-center mb-6 border border-indigo-500/20 shadow-lg shadow-indigo-500/5 relative group cursor-default">
+                <div className="absolute inset-0 bg-indigo-500/20 rounded-full blur-xl group-hover:bg-indigo-500/30 transition-all duration-500 opacity-50"></div>
+                <Package className="w-10 h-10 text-indigo-400 relative z-10 block transform group-hover:scale-110 transition-transform duration-300" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-200 mb-2">{t('no_products')}</h3>
+              <p className="text-sm text-slate-400 max-w-sm mb-8 leading-relaxed">
+                {t('no_products_desc')}
+              </p>
+              <Link
+                to="/add-product"
+                className="px-6 py-3 bg-indigo-500 hover:bg-indigo-600 active:scale-95 text-white rounded-xl shadow-lg shadow-indigo-500/25 transition-all flex items-center gap-2 font-semibold text-sm group"
+              >
+                <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+                {t('add_first_product')}
               </Link>
             </li>
           ) : (
@@ -562,8 +444,8 @@ export default function Dashboard() {
                       </div>
                       <div className="mt-2 flex justify-between items-center text-xs text-slate-600 pl-15">
                         <div className="flex gap-4 pl-15">
-                          <span>{t('purchased') || 'Purchased'}: {fNum(format(parseISO(product.purchase_date), 'MMM d, yyyy'))}</span>
-                          <span>{t('expires') || 'Expires'}: {fNum(format(parseISO(product.expiry_date), 'MMM d, yyyy'))}</span>
+                          <span>{t('purchased')}: {fNum(format(parseISO(product.purchase_date), 'MMM d, yyyy'))}</span>
+                          <span>{t('expires')}: {fNum(format(parseISO(product.expiry_date), 'MMM d, yyyy'))}</span>
                         </div>
                       </div>
                     </div>

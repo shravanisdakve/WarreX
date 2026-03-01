@@ -58,9 +58,9 @@ export default function Navbar({ sidebarOpen, setSidebarOpen }: NavbarProps) {
     const navItems = [
         { path: '/dashboard', label: t('dashboard'), icon: LayoutDashboard },
         { path: '/add-product', label: t('add_product'), icon: PlusCircle },
-        { path: '/assistant', label: 'Assistant', icon: Brain },
+        { path: '/assistant', label: t('assistant'), icon: Brain },
         { path: '/notifications', label: t('notifications'), icon: Bell },
-        { path: '/profile', label: 'Profile', icon: User },
+        { path: '/profile', label: t('profile'), icon: User },
     ];
 
     return (

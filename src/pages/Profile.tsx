@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { User, Mail, MapPin, Package, Bell, Save, ArrowLeft, Shield, Calendar, Loader } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
@@ -13,15 +14,22 @@ interface Profile {
     created_at: string;
     productCount: number;
     notificationCount: number;
+    preferences: {
+        rem_30: boolean;
+        rem_7: boolean;
+        ai_sugg: boolean;
+    };
 }
 
 export default function ProfilePage() {
     const { user } = useAuth();
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const [profile, setProfile] = useState<Profile | null>(null);
     const [editing, setEditing] = useState(false);
     const [editName, setEditName] = useState('');
     const [editCity, setEditCity] = useState('');
+    const [editPreferences, setEditPreferences] = useState({ rem_30: true, rem_7: true, ai_sugg: true });
     const [saving, setSaving] = useState(false);
     const [loading, setLoading] = useState(true);
 
@@ -34,7 +42,8 @@ export default function ProfilePage() {
             const res = await axios.get('/api/user/profile');
             setProfile(res.data);
             setEditName(res.data.name);
-            setEditCity(res.data.city || 'Mumbai');
+            setEditCity(res.data.city || '');
+            setEditPreferences(res.data.preferences || { rem_30: true, rem_7: true, ai_sugg: true });
         } catch (error) {
             console.error('Failed to fetch profile');
         } finally {
@@ -45,7 +54,11 @@ export default function ProfilePage() {
     const handleSave = async () => {
         setSaving(true);
         try {
-            await axios.put('/api/user/profile', { name: editName, city: editCity });
+            await axios.put('/api/user/profile', {
+                name: editName,
+                city: editCity,
+                preferences: editPreferences
+            });
             await fetchProfile();
             setEditing(false);
         } catch (error) {
@@ -86,10 +99,10 @@ export default function ProfilePage() {
                 onClick={() => navigate('/dashboard')}
                 className="inline-flex items-center text-sm text-slate-500 hover:text-slate-300 transition-colors btn-tactile"
             >
-                <ArrowLeft className="w-4 h-4 mr-1" /> Back to Dashboard
+                <ArrowLeft className="w-4 h-4 mr-1" /> {t('back_to_dashboard')}
             </button>
 
-            <h1 className="text-2xl font-bold text-slate-100">Profile & Settings</h1>
+            <h1 className="text-2xl font-bold text-slate-100">{t('profile_settings')}</h1>
 
             {/* Profile Card */}
             <div className="bg-[#151c2e] shadow-sm rounded-2xl border border-indigo-500/10 overflow-hidden">
@@ -115,7 +128,7 @@ export default function ProfilePage() {
                                 <Mail className="w-3.5 h-3.5" /> {profile.email}
                             </p>
                             <p className="text-indigo-200 text-sm flex items-center gap-1 mt-0.5">
-                                <Calendar className="w-3.5 h-3.5" /> Member since {profile.created_at ? format(parseISO(profile.created_at), 'MMM yyyy') : 'N/A'}
+                                <Calendar className="w-3.5 h-3.5" /> {t('member_since')} {profile.created_at ? format(parseISO(profile.created_at), 'MMM yyyy') : 'N/A'}
                             </p>
                         </div>
                     </div>
@@ -126,24 +139,24 @@ export default function ProfilePage() {
                     <div className="p-4 text-center">
                         <Package className="w-5 h-5 text-indigo-400 mx-auto mb-1" />
                         <p className="text-xl font-bold text-slate-100">{profile.productCount}</p>
-                        <p className="text-xs text-slate-500">Products</p>
+                        <p className="text-xs text-slate-500">{t('total_products')}</p>
                     </div>
                     <div className="p-4 text-center">
                         <Bell className="w-5 h-5 text-amber-400 mx-auto mb-1" />
                         <p className="text-xl font-bold text-slate-100">{profile.notificationCount}</p>
-                        <p className="text-xs text-slate-500">Notifications</p>
+                        <p className="text-xs text-slate-500">{t('notifications')}</p>
                     </div>
                     <div className="p-4 text-center">
                         <Shield className="w-5 h-5 text-emerald-400 mx-auto mb-1" />
-                        <p className="text-xl font-bold text-slate-100">Pro</p>
-                        <p className="text-xs text-slate-500">Plan</p>
+                        <p className="text-xl font-bold text-slate-100">{t('pro')}</p>
+                        <p className="text-xs text-slate-500">{t('plan')}</p>
                     </div>
                 </div>
 
                 {/* Details */}
                 <div className="p-6 space-y-4">
                     <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">City</label>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">{t('city')}</label>
                         {editing ? (
                             <input
                                 type="text"
@@ -153,25 +166,43 @@ export default function ProfilePage() {
                             />
                         ) : (
                             <p className="text-sm text-slate-200 flex items-center gap-1">
-                                <MapPin className="w-4 h-4 text-slate-500" /> {profile.city || 'Mumbai'}
+                                <MapPin className="w-4 h-4 text-slate-500" /> {profile.city || 'Not specified'}
                             </p>
                         )}
                     </div>
 
                     <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">Notification Preferences</label>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">{t('reminders')}</label>
                         <div className="space-y-2">
                             <label className="flex items-center gap-2 text-sm text-slate-300">
-                                <input type="checkbox" defaultChecked className="rounded border-white/20 bg-white/5 text-indigo-600 focus:ring-indigo-500" />
-                                Email reminders (30 days before expiry)
+                                <input
+                                    type="checkbox"
+                                    checked={editing ? editPreferences.rem_30 : profile.preferences?.rem_30 ?? true}
+                                    onChange={e => setEditPreferences({ ...editPreferences, rem_30: e.target.checked })}
+                                    disabled={!editing}
+                                    className="rounded border-white/20 bg-white/5 text-indigo-600 focus:ring-indigo-500 disabled:opacity-50"
+                                />
+                                {t('rem_30_days')}
                             </label>
                             <label className="flex items-center gap-2 text-sm text-slate-300">
-                                <input type="checkbox" defaultChecked className="rounded border-white/20 bg-white/5 text-indigo-600 focus:ring-indigo-500" />
-                                Email reminders (7 days before expiry)
+                                <input
+                                    type="checkbox"
+                                    checked={editing ? editPreferences.rem_7 : profile.preferences?.rem_7 ?? true}
+                                    onChange={e => setEditPreferences({ ...editPreferences, rem_7: e.target.checked })}
+                                    disabled={!editing}
+                                    className="rounded border-white/20 bg-white/5 text-indigo-600 focus:ring-indigo-500 disabled:opacity-50"
+                                />
+                                {t('rem_7_days')}
                             </label>
                             <label className="flex items-center gap-2 text-sm text-slate-300">
-                                <input type="checkbox" defaultChecked className="rounded border-white/20 bg-white/5 text-indigo-600 focus:ring-indigo-500" />
-                                AI claim suggestions
+                                <input
+                                    type="checkbox"
+                                    checked={editing ? editPreferences.ai_sugg : profile.preferences?.ai_sugg ?? true}
+                                    onChange={e => setEditPreferences({ ...editPreferences, ai_sugg: e.target.checked })}
+                                    disabled={!editing}
+                                    className="rounded border-white/20 bg-white/5 text-indigo-600 focus:ring-indigo-500 disabled:opacity-50"
+                                />
+                                {t('ai_suggestions')}
                             </label>
                         </div>
                     </div>
@@ -187,13 +218,18 @@ export default function ProfilePage() {
                                 className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-medium rounded-lg hover:from-indigo-500 hover:to-purple-500 transition-all disabled:opacity-50 btn-tactile"
                             >
                                 {saving ? <Loader className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                                Save
+                                {t('save')}
                             </button>
                             <button
-                                onClick={() => { setEditing(false); setEditName(profile.name); setEditCity(profile.city || 'Mumbai'); }}
+                                onClick={() => {
+                                    setEditing(false);
+                                    setEditName(profile.name);
+                                    setEditCity(profile.city || '');
+                                    setEditPreferences(profile.preferences || { rem_30: true, rem_7: true, ai_sugg: true });
+                                }}
                                 className="px-4 py-2 bg-white/5 border border-white/10 text-sm font-medium rounded-lg text-slate-400 hover:bg-white/10 hover:text-slate-200 transition-all btn-tactile"
                             >
-                                Cancel
+                                {t('cancel')}
                             </button>
                         </>
                     ) : (
@@ -201,7 +237,7 @@ export default function ProfilePage() {
                             onClick={() => setEditing(true)}
                             className="inline-flex items-center px-4 py-2 bg-white/5 border border-white/10 text-sm font-medium rounded-lg text-slate-300 hover:bg-white/10 transition-all btn-tactile"
                         >
-                            <User className="w-4 h-4 mr-2 text-indigo-500" /> Edit Profile
+                            <User className="w-4 h-4 mr-2 text-indigo-500" /> {t('edit_profile')}
                         </button>
                     )}
                 </div>
@@ -209,3 +245,4 @@ export default function ProfilePage() {
         </div>
     );
 }
+
