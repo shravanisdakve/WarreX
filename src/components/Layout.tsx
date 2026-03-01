@@ -20,26 +20,28 @@ export default function Layout() {
       {/* Sidebar */}
       <Navbar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
-      {/* Main Content Area — full width always */}
-      <div className="flex-1 flex flex-col min-h-screen w-full relative">
-        {/* Top spacer for hamburger area */}
+      {/* Main Content Area — transitions with sidebar on desktop */}
+      <div
+        className={`flex-1 flex flex-col min-h-screen w-full relative transition-[padding] duration-300 ease-in-out
+          ${sidebarOpen ? 'lg:pl-[260px]' : 'lg:pl-0'}
+        `}
+      >
+        {/* Top spacer for content (under fixed top bar) */}
         <div className="h-16 flex-shrink-0" />
 
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 relative z-10">
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             <motion.div
               key={location.pathname}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.15 }}
             >
               <Outlet />
             </motion.div>
           </AnimatePresence>
         </main>
-
-
       </div>
     </div>
   );

@@ -348,13 +348,7 @@ export default function AddProduct() {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -15 }}
-      transition={{ duration: 0.3 }}
-      className="max-w-2xl mx-auto"
-    >
+    <div className="max-w-2xl mx-auto">
       <div className="bg-[#151c2e]/80 backdrop-blur-xl p-8 rounded-2xl shadow-lg border border-indigo-500/10 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 card-interactive">
         <h1 className="text-2xl font-bold mb-6 text-slate-100">{t('add_product')}</h1>
 
@@ -621,6 +615,6 @@ export default function AddProduct() {
           </div>
         </form>
       </div>
-    </motion.div>
+    </div>
   );
 }

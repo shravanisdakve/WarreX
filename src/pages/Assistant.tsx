@@ -34,14 +34,36 @@ export default function Assistant() {
   }, [messages]);
 
   useEffect(() => {
-    setMessages([
-      { id: Date.now(), text: `Hello! I'm your Warrify AI Advisor. 🧠\n\nI proactively analyze your warranty portfolio and suggest actions.\n\n**Quick actions:**\n• Check warranty status\n• Predict failure risks\n• Draft claim emails\n• Find service centers\n• Estimate resale value\n\nJust ask!`, sender: 'bot', timestamp: new Date() }
-    ]);
+    if (messages.length <= 1) { // Only set default if it's the first time or only one message
+      setMessages([
+        { id: Date.now(), text: `Hello! I'm your Warrify AI Advisor. 🧠\n\nI proactively analyze your warranty portfolio and suggest actions.\n\n**Quick actions:**\n• Check warranty status\n• Predict failure risks\n• Draft claim emails\n• Find service centers\n• Estimate resale value\n\nJust ask!`, sender: 'bot', timestamp: new Date() }
+      ]);
+    }
   }, [i18n.language]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  // Fetch history on mount
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const res = await axios.get('/api/assistant/history');
+        if (res.data && res.data.length > 0) {
+          // Convert string timestamps back to Date objects
+          const history = res.data.map((m: any) => ({
+            ...m,
+            timestamp: new Date(m.timestamp)
+          }));
+          setMessages(history);
+        }
+      } catch (err) {
+        console.error('Failed to load chat history:', err);
+      }
+    };
+    fetchHistory();
+  }, []);
 
   const sendMessage = async (messageText: string) => {
     if (!messageText.trim() || isLoading) return;
@@ -54,19 +76,27 @@ export default function Assistant() {
     setIsLoading(true);
 
     try {
-      const res = await axios.post('/api/assistant', { message: messageText });
+      const res = await axios.post('/api/assistant', { message: messageText }, { timeout: 45000 }); // Increase timeout to 45s for AI
       const botResponse = res.data.response;
 
       setMessages(prev => prev.map(m =>
         m.isLoading ? { ...m, text: botResponse, isLoading: false } : m
       ));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Assistant error:', error);
+      let errorMsg = 'Sorry, I encountered an error. Please check your internet connection or try again later.';
+      if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+        errorMsg = 'My response is taking a bit longer than usual due to high server load. Please try again in a few moments.';
+      } else if (error.response?.status === 403) {
+        errorMsg = 'Session expired or invalid authentication. Please try logging in again to talk to the AI advisor.';
+      }
+
       setMessages(prev => prev.map(m =>
-        m.isLoading ? { ...m, text: 'Sorry, I encountered an error. Please try again.', isLoading: false } : m
+        m.isLoading ? { ...m, text: errorMsg, isLoading: false } : m
       ));
     } finally {
-      setIsLoading(false);
+      setIsLoading(true); // Keep internal state loading for a split second to prevent double-sends
+      setTimeout(() => setIsLoading(false), 500);
     }
   };
 

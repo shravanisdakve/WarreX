@@ -5,17 +5,17 @@ dotenv.config(); // Fallback to .env
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
-import Database from 'better-sqlite3';
 import cors from 'cors';
 import multer from 'multer';
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
 import cron from 'node-cron';
 import nodemailer from 'nodemailer';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
+import axios from 'axios';
+import { createClient } from '@supabase/supabase-js';
+import admin from 'firebase-admin';
 
 // Setup __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -27,68 +27,39 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
 }
 
-// Database Setup
-const db = new Database('warranty_vault.db');
-db.pragma('journal_mode = WAL');
+// ── Supabase (PostgreSQL) Setup ─────────────────────────────────────
+const supabase = createClient(
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+);
 
-// Initialize Tables
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    city TEXT DEFAULT 'Mumbai',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+// ── Firebase Admin Setup ────────────────────────────────────────────
+if (!admin.apps.length) {
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
 
-  CREATE TABLE IF NOT EXISTS products (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    product_name TEXT NOT NULL,
-    brand TEXT,
-    category TEXT NOT NULL,
-    purchase_date TEXT NOT NULL,
-    warranty_months INTEGER NOT NULL,
-    expiry_date TEXT NOT NULL,
-    purchase_price REAL DEFAULT 0,
-    invoice_file_url TEXT,
-    invoice_text TEXT,
-    invoice_number TEXT,
-    notes TEXT,
-    claim_status TEXT DEFAULT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users (id)
-  );
-
-  CREATE TABLE IF NOT EXISTS notifications (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    product_id INTEGER NOT NULL,
-    type TEXT NOT NULL,
-    status TEXT NOT NULL,
-    scheduled_for DATETIME,
-    sent_at DATETIME,
-    error_message TEXT,
-    FOREIGN KEY (user_id) REFERENCES users (id),
-    FOREIGN KEY (product_id) REFERENCES products (id)
-  );
-`);
-
-// Add columns if they don't exist (safe for existing databases)
-try { db.exec(`ALTER TABLE products ADD COLUMN purchase_price REAL DEFAULT 0`); } catch (e) { /* column exists */ }
-try { db.exec(`ALTER TABLE products ADD COLUMN claim_status TEXT DEFAULT NULL`); } catch (e) { /* column exists */ }
-try { db.exec(`ALTER TABLE users ADD COLUMN city TEXT DEFAULT 'Mumbai'`); } catch (e) { /* column exists */ }
-
-// Create indexes for performance
-try { db.exec(`CREATE INDEX IF NOT EXISTS idx_products_expiry ON products(expiry_date)`); } catch (e) { /* index exists */ }
-try { db.exec(`CREATE INDEX IF NOT EXISTS idx_products_user ON products(user_id)`); } catch (e) { /* index exists */ }
-try { db.exec(`CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id)`); } catch (e) { /* index exists */ }
+  if (!projectId || !clientEmail || !privateKey || privateKey.includes('YOUR_FIREBASE_PRIVATE_KEY')) {
+    console.warn('⚠️ [FIREBASE] Firebase Admin credentials missing or using placeholders. Auth features will not work.');
+  } else {
+    try {
+      admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId,
+          clientEmail,
+          privateKey: privateKey.replace(/\\n/g, '\n'),
+        }),
+      });
+      console.log('✅ [FIREBASE] Firebase Admin initialized.');
+    } catch (error) {
+      console.error('❌ [FIREBASE] Failed to initialize Firebase Admin SDK:', (error as Error).message);
+      console.warn('⚠️ [FIREBASE] Server will continue without Firebase features.');
+    }
+  }
+}
 
 const app = express();
 const PORT = 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-change-in-prod-must-be-env-in-real-prod';
 
 // ── Security Middleware ──────────────────────────────────────────────
 // Set UTF-8 encoding for all responses to prevent garbled Hindi/Marathi text
@@ -146,59 +117,74 @@ app.use('/api/', apiLimiter);
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// ── Auth Middleware ──────────────────────────────────────────────────
-const authenticateToken = (req: any, res: any, next: any) => {
+// ── Auth Middleware (Firebase Admin) ─────────────────────────────────
+const authenticateToken = async (req: any, res: any, next: any) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) return res.sendStatus(401);
 
-  jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
-    if (err) return res.sendStatus(403);
-    req.user = user;
+  try {
+    const decoded = await admin.auth().verifyIdToken(token);
+    // Look up the internal user ID from Supabase
+    const { data: user } = await supabase
+      .from('users')
+      .select('id, name, email')
+      .eq('firebase_uid', decoded.uid)
+      .single();
+
+    if (!user) {
+      return res.status(403).json({ error: 'User not found. Please sign up first.' });
+    }
+    req.user = { id: user.id, email: user.email, name: user.name, firebaseUid: decoded.uid };
     next();
-  });
+  } catch (err) {
+    console.error('[AUTH] Token verification failed:', err);
+    return res.sendStatus(403);
+  }
 };
 
-// ── Auth Routes ──────────────────────────────────────────────────────
-app.post('/api/auth/signup', authLimiter, async (req, res) => {
+// ── Auth Routes (Firebase-backed) ───────────────────────────────────
+// Sync Firebase user to Supabase (called after Firebase signup/login on frontend)
+app.post('/api/auth/sync-user', authLimiter, async (req: any, res) => {
   try {
-    const { name, email, password } = req.body;
-    if (!name || !email || !password) return res.status(400).json({ error: 'Missing fields' });
-    if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) return res.sendStatus(401);
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const decoded = await admin.auth().verifyIdToken(token);
+    const { name, email } = req.body;
 
-    try {
-      const stmt = db.prepare('INSERT INTO users (name, email, password) VALUES (?, ?, ?)');
-      const info = stmt.run(name, email, hashedPassword);
-      res.status(201).json({ message: 'User created', userId: info.lastInsertRowid });
-    } catch (e: any) {
-      if (e.code === 'SQLITE_CONSTRAINT_UNIQUE') {
-        return res.status(400).json({ error: 'Email already exists' });
-      }
-      throw e;
+    // Check if user already exists
+    const { data: existing } = await supabase
+      .from('users')
+      .select('id, name, email, city')
+      .eq('firebase_uid', decoded.uid)
+      .single();
+
+    if (existing) {
+      return res.json({ user: existing });
     }
-  } catch (error) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
 
-app.post('/api/auth/login', authLimiter, async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const stmt = db.prepare('SELECT * FROM users WHERE email = ?');
-    const user = stmt.get(email) as any;
+    // Create new user in Supabase
+    const { data: newUser, error } = await supabase
+      .from('users')
+      .insert({
+        firebase_uid: decoded.uid,
+        name: name || decoded.name || 'User',
+        email: email || decoded.email || '',
+      })
+      .select('id, name, email, city')
+      .single();
 
-    if (!user) return res.status(400).json({ error: 'User not found' });
-
-    if (await bcrypt.compare(password, user.password)) {
-      const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '24h' });
-      res.json({ token, user: { id: user.id, name: user.name, email: user.email } });
-    } else {
-      res.status(401).json({ error: 'Invalid credentials' });
+    if (error) {
+      console.error('[SYNC] Supabase insert error:', error);
+      return res.status(500).json({ error: 'Failed to create user' });
     }
+
+    res.status(201).json({ user: newUser });
   } catch (error) {
+    console.error('[SYNC] Error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -211,14 +197,19 @@ const dupeCheckLimiter = rateLimit({
 });
 
 // Check invoice number for duplicates (requires auth for security)
-app.get('/api/products/check-invoice', authenticateToken, dupeCheckLimiter, (req: any, res) => {
+app.get('/api/products/check-invoice', authenticateToken, dupeCheckLimiter, async (req: any, res) => {
   try {
     const { invoiceNumber } = req.query;
     if (!invoiceNumber) return res.json({ exists: false });
 
-    const stmt = db.prepare('SELECT id, product_name FROM products WHERE user_id = ? AND (TRIM(invoice_number) = ? OR invoice_number = ?) LIMIT 1');
     const invTrim = (invoiceNumber as string).trim();
-    const existing = stmt.get(req.user.id, invTrim, invoiceNumber) as any;
+    const { data: existing } = await supabase
+      .from('products')
+      .select('id, product_name')
+      .eq('user_id', req.user.id)
+      .or(`invoice_number.eq.${invTrim},invoice_number.eq.${invoiceNumber}`)
+      .limit(1)
+      .single();
 
     res.json({ exists: !!existing, productName: existing?.product_name?.trim() || 'Unknown' });
   } catch (error) {
@@ -227,54 +218,47 @@ app.get('/api/products/check-invoice', authenticateToken, dupeCheckLimiter, (req
   }
 });
 
-app.get('/api/products', authenticateToken, (req: any, res) => {
+app.get('/api/products', authenticateToken, async (req: any, res) => {
   try {
     const { search, expiringSoon, dateFrom, dateTo, category } = req.query;
-    let query = 'SELECT * FROM products WHERE user_id = ?';
-    const params: any[] = [req.user.id];
+    let query = supabase.from('products').select('*').eq('user_id', req.user.id);
 
     if (search) {
-      query += ' AND (product_name LIKE ? OR brand LIKE ? OR category LIKE ? OR invoice_number LIKE ?)';
       const term = `%${search}%`;
-      params.push(term, term, term, term);
+      query = query.or(`product_name.ilike.${term},brand.ilike.${term},category.ilike.${term},invoice_number.ilike.${term}`);
     }
 
     if (category && category !== 'all') {
-      query += ' AND category = ?';
-      params.push(category);
+      query = query.eq('category', category);
     }
 
     if (dateFrom) {
-      query += ' AND purchase_date >= ?';
-      params.push(dateFrom);
+      query = query.gte('purchase_date', dateFrom);
     }
 
     if (dateTo) {
-      query += ' AND purchase_date <= ?';
-      params.push(dateTo);
+      query = query.lte('purchase_date', dateTo);
     }
 
     if (expiringSoon === 'true') {
-      const today = new Date();
+      const today = new Date().toISOString().split('T')[0];
       const thirtyDaysFromNow = new Date();
-      thirtyDaysFromNow.setDate(today.getDate() + 30);
-
-      query += ' AND expiry_date BETWEEN ? AND ?';
-      params.push(today.toISOString().split('T')[0], thirtyDaysFromNow.toISOString().split('T')[0]);
+      thirtyDaysFromNow.setDate(new Date().getDate() + 30);
+      query = query.gte('expiry_date', today).lte('expiry_date', thirtyDaysFromNow.toISOString().split('T')[0]);
     }
 
-    query += ' ORDER BY created_at DESC';
+    query = query.order('created_at', { ascending: false });
 
-    const stmt = db.prepare(query);
-    const products = stmt.all(...params);
-    res.json(products);
+    const { data: products, error } = await query;
+    if (error) throw error;
+    res.json(products || []);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch products' });
   }
 });
 
-app.post('/api/products', authenticateToken, (req: any, res) => {
+app.post('/api/products', authenticateToken, async (req: any, res) => {
   try {
     const { productName, brand, category, purchaseDate, warrantyMonths, expiryDate, invoiceFileUrl, invoiceText, invoiceNumber, notes, purchasePrice } = req.body;
 
@@ -282,21 +266,39 @@ app.post('/api/products', authenticateToken, (req: any, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const stmt = db.prepare(`
-      INSERT INTO products (user_id, product_name, brand, category, purchase_date, warranty_months, expiry_date, purchase_price, invoice_file_url, invoice_text, invoice_number, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
+    const { data: product, error } = await supabase
+      .from('products')
+      .insert({
+        user_id: req.user.id,
+        product_name: productName,
+        brand,
+        category,
+        purchase_date: purchaseDate,
+        warranty_months: warrantyMonths,
+        expiry_date: expiryDate,
+        purchase_price: purchasePrice || 0,
+        invoice_file_url: invoiceFileUrl,
+        invoice_text: invoiceText,
+        invoice_number: invoiceNumber,
+        notes,
+      })
+      .select()
+      .single();
 
-    const info = stmt.run(req.user.id, productName, brand, category, purchaseDate, warrantyMonths, expiryDate, purchasePrice || 0, invoiceFileUrl, invoiceText, invoiceNumber, notes);
+    if (error) throw error;
 
     // Log a notification for new product added
     try {
-      db.prepare('INSERT INTO notifications (user_id, product_id, type, status, sent_at) VALUES (?, ?, ?, ?, ?)').run(
-        req.user.id, info.lastInsertRowid, 'PRODUCT_ADDED', 'SENT', new Date().toISOString()
-      );
+      await supabase.from('notifications').insert({
+        user_id: req.user.id,
+        product_id: product.id,
+        type: 'PRODUCT_ADDED',
+        status: 'SENT',
+        sent_at: new Date().toISOString(),
+      });
     } catch (e) { /* non-critical */ }
 
-    res.status(201).json({ id: info.lastInsertRowid, ...req.body });
+    res.status(201).json(product);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to create product' });
@@ -304,34 +306,34 @@ app.post('/api/products', authenticateToken, (req: any, res) => {
 });
 
 // PUT /api/products/:id — Update product
-app.put('/api/products/:id', authenticateToken, (req: any, res) => {
+app.put('/api/products/:id', authenticateToken, async (req: any, res) => {
   try {
     const { productName, brand, category, purchaseDate, warrantyMonths, expiryDate, invoiceFileUrl, invoiceText, invoiceNumber, notes, purchasePrice, claimStatus } = req.body;
 
-    const existing = db.prepare('SELECT * FROM products WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
-    if (!existing) return res.status(404).json({ error: 'Product not found' });
+    // Build update object only with provided fields
+    const updates: any = { updated_at: new Date().toISOString() };
+    if (productName !== undefined) updates.product_name = productName;
+    if (brand !== undefined) updates.brand = brand;
+    if (category !== undefined) updates.category = category;
+    if (purchaseDate !== undefined) updates.purchase_date = purchaseDate;
+    if (warrantyMonths !== undefined) updates.warranty_months = warrantyMonths;
+    if (expiryDate !== undefined) updates.expiry_date = expiryDate;
+    if (purchasePrice !== undefined) updates.purchase_price = purchasePrice;
+    if (invoiceFileUrl !== undefined) updates.invoice_file_url = invoiceFileUrl;
+    if (invoiceText !== undefined) updates.invoice_text = invoiceText;
+    if (invoiceNumber !== undefined) updates.invoice_number = invoiceNumber;
+    if (notes !== undefined) updates.notes = notes;
+    if (claimStatus !== undefined) updates.claim_status = claimStatus;
 
-    const stmt = db.prepare(`
-      UPDATE products SET
-        product_name = COALESCE(?, product_name),
-        brand = COALESCE(?, brand),
-        category = COALESCE(?, category),
-        purchase_date = COALESCE(?, purchase_date),
-        warranty_months = COALESCE(?, warranty_months),
-        expiry_date = COALESCE(?, expiry_date),
-        purchase_price = COALESCE(?, purchase_price),
-        invoice_file_url = COALESCE(?, invoice_file_url),
-        invoice_text = COALESCE(?, invoice_text),
-        invoice_number = COALESCE(?, invoice_number),
-        notes = COALESCE(?, notes),
-        claim_status = COALESCE(?, claim_status),
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ? AND user_id = ?
-    `);
+    const { data: updated, error } = await supabase
+      .from('products')
+      .update(updates)
+      .eq('id', req.params.id)
+      .eq('user_id', req.user.id)
+      .select()
+      .single();
 
-    stmt.run(productName, brand, category, purchaseDate, warrantyMonths, expiryDate, purchasePrice, invoiceFileUrl, invoiceText, invoiceNumber, notes, claimStatus, req.params.id, req.user.id);
-
-    const updated = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
+    if (error || !updated) return res.status(404).json({ error: 'Product not found' });
     res.json(updated);
   } catch (error) {
     console.error(error);
@@ -339,24 +341,33 @@ app.put('/api/products/:id', authenticateToken, (req: any, res) => {
   }
 });
 
-app.get('/api/products/:id', authenticateToken, (req: any, res) => {
+app.get('/api/products/:id', authenticateToken, async (req: any, res) => {
   try {
-    const stmt = db.prepare('SELECT * FROM products WHERE id = ? AND user_id = ?');
-    const product = stmt.get(req.params.id, req.user.id);
-    if (!product) return res.status(404).json({ error: 'Product not found' });
+    const { data: product, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', req.params.id)
+      .eq('user_id', req.user.id)
+      .single();
+
+    if (error || !product) return res.status(404).json({ error: 'Product not found' });
     res.json(product);
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-app.delete('/api/products/:id', authenticateToken, (req: any, res) => {
+app.delete('/api/products/:id', authenticateToken, async (req: any, res) => {
   try {
     // Also delete associated notifications
-    db.prepare('DELETE FROM notifications WHERE product_id = ? AND user_id = ?').run(req.params.id, req.user.id);
-    const stmt = db.prepare('DELETE FROM products WHERE id = ? AND user_id = ?');
-    const info = stmt.run(req.params.id, req.user.id);
-    if (info.changes === 0) return res.status(404).json({ error: 'Product not found' });
+    await supabase.from('notifications').delete().eq('product_id', req.params.id).eq('user_id', req.user.id);
+    const { error, count } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', req.params.id)
+      .eq('user_id', req.user.id);
+
+    if (error) return res.status(404).json({ error: 'Product not found' });
     res.json({ message: 'Product deleted' });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
@@ -497,7 +508,7 @@ app.get('/api/service', (req, res) => {
 // ── AI Risk Assessment Endpoint ──────────────────────────────────────
 app.get('/api/products/:id/risk-assessment', authenticateToken, async (req: any, res) => {
   try {
-    const product = db.prepare('SELECT * FROM products WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id) as any;
+    const { data: product } = await supabase.from('products').select('*').eq('id', req.params.id).eq('user_id', req.user.id).single();
     if (!product) return res.status(404).json({ error: 'Product not found' });
 
     const daysLeft = Math.ceil((new Date(product.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
@@ -562,19 +573,20 @@ app.get('/api/products/:id/risk-assessment', authenticateToken, async (req: any,
 // ── AI Insights Endpoint ─────────────────────────────────────────────
 app.get('/api/ai/insights', authenticateToken, async (req: any, res) => {
   try {
-    const products = db.prepare('SELECT * FROM products WHERE user_id = ?').all(req.user.id) as any[];
+    const { data: products } = await supabase.from('products').select('*').eq('user_id', req.user.id);
+    const allProducts = (products || []) as any[];
     const lang = req.query.lang || 'en';
 
     const insights: string[] = [];
     const now = new Date();
 
     // Generate actionable insights
-    const expiringSoon = products.filter(p => {
+    const expiringSoon = allProducts.filter(p => {
       const days = Math.ceil((new Date(p.expiry_date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       return days > 0 && days <= 30;
     });
 
-    const expired = products.filter(p => {
+    const expired = allProducts.filter(p => {
       const days = Math.ceil((new Date(p.expiry_date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       return days < 0;
     });
@@ -595,7 +607,7 @@ app.get('/api/ai/insights', authenticateToken, async (req: any, res) => {
     }
 
     // Category-specific insight
-    const electronics = products.filter(p => p.category === 'Electronics');
+    const electronics = allProducts.filter(p => p.category === 'Electronics');
     if (electronics.length > 2) {
       if (lang === 'hi') insights.push(`📱 आप ${electronics.length} इलेक्ट्रॉनिक्स ट्रैक करते हैं। सुझाव: वारंटी खत्म होने से पहले सॉफ़्टवेयर समस्याओं की जाँच करें — वे अक्सर कवर होती हैं।`);
       else if (lang === 'mr') insights.push(`📱 तुम्ही ${electronics.length} इलेक्ट्रॉनिक्स ट्रॅक करता. टीप: वारंटी संपण्यापूर्वी सॉफ्टवेअर संबंधित समस्या तपासा — त्या सहसा कव्हर केल्या जातात.`);
@@ -614,8 +626,8 @@ app.get('/api/ai/insights', authenticateToken, async (req: any, res) => {
     }
 
     // Savings insight
-    const totalPurchaseValue = products.reduce((sum: number, p: any) => sum + (p.purchase_price || 0), 0);
-    const activeProducts = products.filter(p => new Date(p.expiry_date) > now);
+    const totalPurchaseValue = allProducts.reduce((sum: number, p: any) => sum + (p.purchase_price || 0), 0);
+    const activeProducts = allProducts.filter(p => new Date(p.expiry_date) > now);
     const protectedValue = activeProducts.reduce((sum: number, p: any) => sum + (p.purchase_price || 0), 0);
 
     if (protectedValue > 0) {
@@ -638,7 +650,7 @@ app.get('/api/ai/insights', authenticateToken, async (req: any, res) => {
 
     const localizedInsights = insights.map(i => formatLocalNumbers(i, lang));
 
-    res.json({ insights: localizedInsights, totalProducts: products.length, activeCount: products.filter(p => new Date(p.expiry_date) > now).length });
+    res.json({ insights: localizedInsights, totalProducts: allProducts.length, activeCount: allProducts.filter(p => new Date(p.expiry_date) > now).length });
   } catch (error) {
     console.error('AI Insights error:', error);
     res.status(500).json({ error: 'Failed to generate insights' });
@@ -647,20 +659,51 @@ app.get('/api/ai/insights', authenticateToken, async (req: any, res) => {
 
 // ── AI Assistant Backend ─────────────────────────────────────────────
 app.post('/api/assistant', authenticateToken, async (req: any, res) => {
+  const requestId = Math.random().toString(36).substring(7);
+  console.log(`[AI-ADVISOR] [${requestId}] Receiving message: "${req.body.message?.substring(0, 50)}..."`);
+
   try {
     const { message } = req.body;
     if (!message) return res.status(400).json({ error: 'Message is required' });
 
-    // Fetch user's products for context
-    const products = db.prepare('SELECT * FROM products WHERE user_id = ?').all(req.user.id) as any[];
+    // Fetch user's products for context 
+    let products: any[] = [];
+    try {
+      if (process.env.SUPABASE_URL && process.env.SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+        const { data, error } = await supabase.from('products').select('*').eq('user_id', req.user.id);
+        if (error) {
+          console.warn(`[AI-ADVISOR] [${requestId}] Supabase query error:`, error.message);
+        } else {
+          products = data || [];
+        }
+      }
+    } catch (dbError) {
+      console.error(`[AI-ADVISOR] [${requestId}] DB context fetch failed:`, dbError);
+    }
+
+    // Fetch recent chat history for context
+    let chatHistory: any[] = [];
+    try {
+      const { data, error } = await supabase
+        .from('assistant_chats')
+        .select('message, response')
+        .eq('user_id', req.user.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (!error && data) {
+        chatHistory = data.reverse(); // Order from oldest to newest for context
+      }
+    } catch (historyError) {
+      console.warn(`[AI-ADVISOR] [${requestId}] History fetch failed:`, historyError);
+    }
 
     const productContext = products.map(p => {
       const daysLeft = Math.ceil((new Date(p.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
       return `- ${p.product_name} (${p.brand || 'No brand'}, ${p.category}): purchased ${p.purchase_date}, warranty ${p.warranty_months} months, expires ${p.expiry_date} (${daysLeft > 0 ? daysLeft + ' days left' : 'EXPIRED ' + Math.abs(daysLeft) + ' days ago'})${p.invoice_number ? ', Invoice#: ' + p.invoice_number : ''}${p.purchase_price ? ', Price: ₹' + p.purchase_price : ''}`;
     }).join('\n');
 
-    const systemPrompt = `You are Warrify AI Advisor – a proactive, intelligent warranty management advisor. You don't just answer questions — you anticipate problems and suggest actions.
-
+    const systemPrompt = `You are Warrify AI Advisor – a proactive, intelligent warranty management advisor. 
 Current user: ${req.user.name} (${req.user.email})
 Today's date: ${new Date().toISOString().split('T')[0]}
 
@@ -673,48 +716,176 @@ Instructions:
 - Be concise, actionable and helpful. Use bullet points and formatting.
 - When asked about warranty status, provide detailed analysis with days remaining.
 - When asked about service centers, provide the contact info AND nearby service center locations.
-- When asked to draft a complaint/claim email, write a HIGHLY PROFESSIONAL and SPECIFIC email. Include:
-  * Clear subject line with product name and invoice number
-  * Formal greeting to brand support team
-  * Specific issue description (ask user for details if not provided)
-  * Product details: purchase date, warranty expiry, invoice number
-  * Request for repair/replacement under warranty
-  * Professional closing with user's name
-  * NEVER include placeholder text like "[Please describe issue here]" - if no issue is specified, write about a general inspection request
-- Proactively suggest actions: "Your X warranty expires in Y days. Consider filing a claim for [common issues]."
+- When asked to draft a claim email, write a HIGHLY PROFESSIONAL email with subject line, formal greeting, and specific product details (Invoice#, Date).
 - If the user asks in Hindi or Marathi, respond in that language.
-- Suggest claim filing strategies and timing based on warranty expiry proximity.
-- Never make up product information not in the list above.
-- For products expiring soon, mention common failure patterns for that category.`;
+- Proactively suggest actions (e.g. "Warranty expires in 15 days, check for common issues").`;
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    let responseText = '';
+    let modelUsed = '';
 
-    if (!apiKey || apiKey === 'YOUR_GEMINI_API_KEY_HERE') {
-      // Fallback: rule-based response when no API key
-      const fallbackResponse = generateFallbackResponse(message, products, req.user.name);
-      return res.json({ response: fallbackResponse });
+    // STAGE 1: NVIDIA Qwen 2.5-7B (NVIDIA Build API)
+    const nvidiaApiKey = process.env.NVIDIA_API_KEY;
+    if (nvidiaApiKey && nvidiaApiKey !== 'YOUR_NVIDIA_API_KEY_HERE') {
+      try {
+        console.log(`[AI-ADVISOR] [${requestId}] Stage 1: Calling NVIDIA (Qwen 2.5-7B)...`);
+
+        const nvidiaMessages = [
+          { role: "system", content: systemPrompt },
+          ...chatHistory.flatMap(h => [
+            { role: "user", content: h.message },
+            { role: "assistant", content: h.response }
+          ]),
+          { role: "user", content: message }
+        ];
+
+        const nvidiaResponse = await axios.post('https://integrate.api.nvidia.com/v1/chat/completions', {
+          model: "qwen/qwen2_5-7b-instruct",
+          messages: nvidiaMessages,
+          temperature: 0.2,
+          top_p: 0.7,
+          max_tokens: 1024
+        }, {
+          headers: {
+            'Authorization': `Bearer ${nvidiaApiKey}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000 // 10 second timeout for NVIDIA
+        });
+
+        if (nvidiaResponse.data?.choices?.[0]?.message?.content) {
+          responseText = nvidiaResponse.data.choices[0].message.content;
+          modelUsed = 'NVIDIA-QWEN-2.5-7B';
+          console.log(`[AI-ADVISOR] [${requestId}] Success with NVIDIA API`);
+        }
+      } catch (nvError: any) {
+        console.warn(`[AI-ADVISOR] [${requestId}] NVIDIA API Failed:`, nvError.response?.data?.error || nvError.message);
+      }
     }
+
+    // STAGE 2: Gemini 1.5/2.0 Flash Fallback
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (!responseText && geminiApiKey && geminiApiKey !== 'YOUR_GEMINI_API_KEY_HERE') {
+      try {
+        console.log(`[AI-ADVISOR] [${requestId}] Stage 2: Calling Gemini Fallback (2.0)...`);
+        const ai = new GoogleGenAI({ apiKey: geminiApiKey });
+
+        const geminiHistory = chatHistory.flatMap(h => [
+          { role: 'user', parts: [{ text: h.message }] },
+          { role: 'model', parts: [{ text: h.response }] }
+        ]);
+
+        const result = await ai.models.generateContent({
+          model: 'gemini-2.0-flash',
+          contents: [
+            { role: 'user', parts: [{ text: "System Context & Instructions: " + systemPrompt }] },
+            { role: 'model', parts: [{ text: "Understood. I am your Warrify AI Advisor. How can I help you today?" }] },
+            ...geminiHistory,
+            { role: 'user', parts: [{ text: message }] }
+          ]
+        });
+
+        if (result && typeof result.text === 'string') {
+          responseText = result.text;
+        } else if (result && (result as any).response && typeof (result as any).response.text === 'function') {
+          responseText = await (result as any).response.text();
+        }
+
+        if (responseText) {
+          modelUsed = 'GEMINI-2.0-FLASH';
+          console.log(`[AI-ADVISOR] [${requestId}] Success with Gemini API`);
+        }
+      } catch (geminiError: any) {
+        console.warn(`[AI-ADVISOR] [${requestId}] Gemini API Failed:`, geminiError.message);
+      }
+    }
+
+    // STAGE 3: Groq (Llama 3 / Mixtral) Fallback
+    const groqApiKey = process.env.GROQ_API_KEY;
+    if (!responseText && groqApiKey && groqApiKey !== 'YOUR_GROQ_API_KEY_HERE') {
+      try {
+        console.log(`[AI-ADVISOR] [${requestId}] Stage 3: Calling Groq (Llama 3)...`);
+        const groqResponse = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+          model: "llama3-70b-8192",
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...chatHistory.flatMap(h => [
+              { role: "user", content: h.message },
+              { role: "assistant", content: h.response }
+            ]),
+            { role: "user", content: message }
+          ],
+          temperature: 0.2,
+          max_tokens: 1024
+        }, {
+          headers: {
+            'Authorization': `Bearer ${groqApiKey}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000
+        });
+
+        if (groqResponse.data?.choices?.[0]?.message?.content) {
+          responseText = groqResponse.data.choices[0].message.content;
+          modelUsed = 'GROQ-LLAMA3-70B';
+          console.log(`[AI-ADVISOR] [${requestId}] Success with Groq API`);
+        }
+      } catch (groqError: any) {
+        console.warn(`[AI-ADVISOR] [${requestId}] Groq API Failed:`, groqError.response?.data || groqError.message);
+      }
+    }
+
+    // STAGE 4: Rule-based local fallback
+    if (!responseText) {
+      console.log(`[AI-ADVISOR] [${requestId}] Stage 4: Falling back to rules`);
+      responseText = generateFallbackResponse(message, products, req.user.name);
+      modelUsed = 'RULE-BASED';
+    }
+
+    // FINAL ACTION: Log to Supabase and send response
+    console.log(`[AI-ADVISOR] [${requestId}] Saving chat for user: ${req.user.id}`);
     try {
-      const ai = new GoogleGenAI({ apiKey });
-      const result = await ai.models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: [
-          { role: 'user', parts: [{ text: systemPrompt + '\n\nUser message: ' + message }] }
-        ],
+      const { error: insError } = await supabase.from('assistant_chats').insert({
+        user_id: req.user.id,
+        message: message,
+        response: responseText,
+        model_used: modelUsed
       });
-
-      const text = result.text || 'I apologize, I could not process your request. Please try again.';
-      res.json({ response: text });
-    } catch (aiError: any) {
-      console.error('Gemini API error:', aiError.message);
-      // Fallback to rule-based
-      const fallbackResponse = generateFallbackResponse(message, products, req.user.name);
-      res.json({ response: fallbackResponse });
+      if (insError) console.error(`[AI-ADVISOR] [${requestId}] Supabase Log Error:`, insError.message);
+      else console.log(`[AI-ADVISOR] [${requestId}] Successfully saved chat to Supabase.`);
+    } catch (saveError) {
+      console.error(`[AI-ADVISOR] [${requestId}] Database insert exception:`, saveError);
     }
+
+    res.json({ response: responseText, model: modelUsed });
 
   } catch (error) {
-    console.error('Assistant error:', error);
-    res.status(500).json({ error: 'Assistant service unavailable' });
+    console.error(`[AI-ADVISOR] [${requestId}] General error:`, error);
+    res.status(500).json({ error: 'Assistant service temporarily overwhelmed' });
+  }
+});
+
+// ── AI Assistant History Endpoint ────────────────────────────────────
+app.get('/api/assistant/history', authenticateToken, async (req: any, res) => {
+  try {
+    const { data: history, error } = await supabase
+      .from('assistant_chats')
+      .select('id, message, response, created_at')
+      .eq('user_id', req.user.id)
+      .order('created_at', { ascending: true })
+      .limit(50);
+
+    if (error) throw error;
+
+    // Convert to frontend format
+    const formattedHistory = (history || []).flatMap((h: any) => [
+      { id: `u-${h.id}`, text: h.message, sender: 'user', timestamp: new Date(h.created_at) },
+      { id: `b-${h.id}`, text: h.response, sender: 'bot', timestamp: new Date(h.created_at) }
+    ]);
+
+    res.json(formattedHistory);
+  } catch (error) {
+    console.error('Failed to fetch assistant history:', error);
+    res.status(500).json({ error: 'Failed to fetch history' });
   }
 });
 
@@ -847,20 +1018,23 @@ ${userName}`;
 }
 
 // ── Upcoming Warranties Endpoint ─────────────────────────────────────
-app.get('/api/products/upcoming/expiring', authenticateToken, (req: any, res) => {
+app.get('/api/products/upcoming/expiring', authenticateToken, async (req: any, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
     const thirtyDays = new Date();
     thirtyDays.setDate(thirtyDays.getDate() + 30);
     const thirtyDaysStr = thirtyDays.toISOString().split('T')[0];
 
-    const stmt = db.prepare(`
-      SELECT * FROM products
-      WHERE user_id = ? AND expiry_date BETWEEN ? AND ?
-      ORDER BY expiry_date ASC
-    `);
-    const products = stmt.all(req.user.id, today, thirtyDaysStr);
-    res.json(products);
+    const { data: products, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('user_id', req.user.id)
+      .gte('expiry_date', today)
+      .lte('expiry_date', thirtyDaysStr)
+      .order('expiry_date', { ascending: true });
+
+    if (error) throw error;
+    res.json(products || []);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch upcoming expirations' });
   }
@@ -870,21 +1044,20 @@ app.get('/api/products/upcoming/expiring', authenticateToken, (req: any, res) =>
 app.post('/api/products/send-claim-email', authenticateToken, async (req: any, res) => {
   try {
     const { productId, emailBody, recipientEmail } = req.body;
-    const product = db.prepare('SELECT * FROM products WHERE id = ? AND user_id = ?').get(productId, req.user.id) as any;
+    const { data: product } = await supabase.from('products').select('*').eq('id', productId).eq('user_id', req.user.id).single();
     if (!product) return res.status(404).json({ error: 'Product not found' });
 
-    const userStmt = db.prepare('SELECT email FROM users WHERE id = ?');
-    const user = userStmt.get(req.user.id) as any;
+    const { data: user } = await supabase.from('users').select('email').eq('id', req.user.id).single();
 
     const subject = `Warranty Claim - ${product.product_name}${product.invoice_number ? ' (Inv: ' + product.invoice_number + ')' : ''}`;
-    const to = recipientEmail || serviceDirectory[product.brand]?.email || user.email;
+    const to = recipientEmail || serviceDirectory[product.brand]?.email || user?.email;
 
     await sendEmail(to, subject, emailBody || 'Warranty claim request.');
 
     // Log notification
-    db.prepare('INSERT INTO notifications (user_id, product_id, type, status, sent_at) VALUES (?, ?, ?, ?, ?)').run(
-      req.user.id, productId, 'CLAIM_EMAIL', 'SENT', new Date().toISOString()
-    );
+    await supabase.from('notifications').insert({
+      user_id: req.user.id, product_id: productId, type: 'CLAIM_EMAIL', status: 'SENT', sent_at: new Date().toISOString()
+    });
 
     res.json({ message: `Claim email sent to ${to}`, to });
   } catch (error) {
@@ -894,20 +1067,19 @@ app.post('/api/products/send-claim-email', authenticateToken, async (req: any, r
 });
 
 // ── Admin Stats Endpoint ─────────────────────────────────────────────
-app.get('/api/admin/stats', (req, res) => {
+app.get('/api/admin/stats', async (req, res) => {
   try {
-    const totalUsers = (db.prepare('SELECT COUNT(*) as count FROM users').get() as any).count;
-    const totalProducts = (db.prepare('SELECT COUNT(*) as count FROM products').get() as any).count;
-    const totalNotifications = (db.prepare('SELECT COUNT(*) as count FROM notifications').get() as any).count;
+    const { count: totalUsers } = await supabase.from('users').select('*', { count: 'exact', head: true });
+    const { count: totalProducts } = await supabase.from('products').select('*', { count: 'exact', head: true });
+    const { count: totalNotifications } = await supabase.from('notifications').select('*', { count: 'exact', head: true });
 
-    // Calculate environmental impact using UNEP-backed methodology
-    const products = db.prepare('SELECT category, expiry_date FROM products').all() as any[];
+    const { data: products } = await supabase.from('products').select('category, expiry_date');
     let eWaste = 0;
     let co2Saved = 0;
     const now = new Date();
     const UNEP_CO2: Record<string, number> = { 'Electronics': 18, 'Appliances': 65, 'Vehicle': 120, 'Furniture': 25 };
     const EWASTE: Record<string, number> = { 'Electronics': 0.2, 'Appliances': 1.5, 'Vehicle': 3.0, 'Furniture': 0.5 };
-    products.forEach((p: any) => {
+    (products || []).forEach((p: any) => {
       const isActive = new Date(p.expiry_date) > now;
       if (isActive) {
         co2Saved += UNEP_CO2[p.category] || 10;
@@ -916,13 +1088,13 @@ app.get('/api/admin/stats', (req, res) => {
     });
 
     res.json({
-      totalUsers,
-      totalProducts,
-      totalNotifications,
+      totalUsers: totalUsers || 0,
+      totalProducts: totalProducts || 0,
+      totalNotifications: totalNotifications || 0,
       eWasteSavedKg: eWaste.toFixed(1),
       co2SavedKg: co2Saved.toFixed(1),
       platformVersion: '2.0.0',
-      techStack: ['React 19', 'TypeScript', 'Node.js/Express', 'SQLite (better-sqlite3)', 'Gemini AI 2.0', 'Tesseract.js OCR', 'Nodemailer', 'JWT Auth', 'Helmet Security', 'Rate Limiting']
+      techStack: ['React 19', 'TypeScript', 'Node.js/Express', 'Supabase (PostgreSQL)', 'Firebase Auth', 'Gemini AI 2.0', 'Tesseract.js OCR', 'Nodemailer', 'Helmet Security', 'Rate Limiting']
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch stats' });
@@ -930,25 +1102,35 @@ app.get('/api/admin/stats', (req, res) => {
 });
 
 // ── User Profile Endpoint ────────────────────────────────────────────
-app.get('/api/user/profile', authenticateToken, (req: any, res) => {
+app.get('/api/user/profile', authenticateToken, async (req: any, res) => {
   try {
-    const user = db.prepare('SELECT id, name, email, city, created_at FROM users WHERE id = ?').get(req.user.id) as any;
+    const { data: user } = await supabase.from('users').select('id, name, email, city, created_at').eq('id', req.user.id).single();
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const productCount = (db.prepare('SELECT COUNT(*) as count FROM products WHERE user_id = ?').get(req.user.id) as any).count;
-    const notifCount = (db.prepare('SELECT COUNT(*) as count FROM notifications WHERE user_id = ?').get(req.user.id) as any).count;
+    const { count: productCount } = await supabase.from('products').select('*', { count: 'exact', head: true }).eq('user_id', req.user.id);
+    const { count: notifCount } = await supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('user_id', req.user.id);
 
-    res.json({ ...user, productCount, notificationCount: notifCount });
+    res.json({ ...user, productCount: productCount || 0, notificationCount: notifCount || 0 });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch profile' });
   }
 });
 
-app.put('/api/user/profile', authenticateToken, (req: any, res) => {
+app.put('/api/user/profile', authenticateToken, async (req: any, res) => {
   try {
     const { name, city } = req.body;
-    db.prepare('UPDATE users SET name = COALESCE(?, name), city = COALESCE(?, city) WHERE id = ?').run(name, city, req.user.id);
-    const user = db.prepare('SELECT id, name, email, city, created_at FROM users WHERE id = ?').get(req.user.id);
+    const updates: any = {};
+    if (name) updates.name = name;
+    if (city) updates.city = city;
+
+    const { data: user, error } = await supabase
+      .from('users')
+      .update(updates)
+      .eq('id', req.user.id)
+      .select('id, name, email, city, created_at')
+      .single();
+
+    if (error) throw error;
     res.json(user);
   } catch (error) {
     res.status(500).json({ error: 'Failed to update profile' });
@@ -982,41 +1164,47 @@ const sendEmail = async (to: string, subject: string, text: string) => {
 app.post('/api/notifications/test', authenticateToken, async (req: any, res) => {
   try {
     const { productId } = req.body;
-    const stmt = db.prepare('SELECT * FROM products WHERE id = ? AND user_id = ?');
-    const product = stmt.get(productId, req.user.id) as any;
-
+    const { data: product } = await supabase.from('products').select('*').eq('id', productId).eq('user_id', req.user.id).single();
     if (!product) return res.status(404).json({ error: 'Product not found' });
 
-    const userStmt = db.prepare('SELECT email FROM users WHERE id = ?');
-    const user = userStmt.get(req.user.id) as any;
+    const { data: user } = await supabase.from('users').select('email').eq('id', req.user.id).single();
 
     const daysLeft = Math.ceil((new Date(product.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
     const subject = `⚠️ Warranty Reminder: ${product.product_name}`;
     const body = `Hi ${req.user.name},\n\nThis is a warranty reminder from Warrify.\n\nProduct: ${product.product_name}\nBrand: ${product.brand || 'N/A'}\nPurchase Date: ${product.purchase_date}\nExpiry Date: ${product.expiry_date}\nDays Left: ${daysLeft > 0 ? daysLeft + ' days' : 'EXPIRED'}\n${product.purchase_price ? 'Purchase Price: ₹' + product.purchase_price : ''}\n\n${daysLeft <= 30 && daysLeft > 0 ? '⚠️ Your warranty is expiring soon! Consider filing any pending claims.' : ''}\n\nVisit your Warrify dashboard to take action.\n\n— Warrify AI Warranty Management`;
 
-    await sendEmail(user.email, subject, body);
+    await sendEmail(user?.email || req.user.email, subject, body);
 
-    const logStmt = db.prepare('INSERT INTO notifications (user_id, product_id, type, status, sent_at) VALUES (?, ?, ?, ?, ?)');
-    logStmt.run(req.user.id, productId, 'TEST', 'SENT', new Date().toISOString());
+    await supabase.from('notifications').insert({
+      user_id: req.user.id, product_id: productId, type: 'TEST', status: 'SENT', sent_at: new Date().toISOString()
+    });
 
-    res.json({ message: `Reminder sent to ${user.email}` });
+    res.json({ message: `Reminder sent to ${user?.email}` });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to send test email' });
   }
 });
 
-app.get('/api/notifications', authenticateToken, (req: any, res) => {
+app.get('/api/notifications', authenticateToken, async (req: any, res) => {
   try {
-    const stmt = db.prepare(`
-      SELECT n.*, p.product_name
-      FROM notifications n
-      JOIN products p ON n.product_id = p.id
-      WHERE n.user_id = ?
-      ORDER BY n.sent_at DESC
-      LIMIT 50
-    `);
-    const logs = stmt.all(req.user.id);
+    // Supabase doesn't have a direct JOIN in the query builder, so we use a view or two queries
+    const { data: notifs, error } = await supabase
+      .from('notifications')
+      .select('*, products(product_name)')
+      .eq('user_id', req.user.id)
+      .order('sent_at', { ascending: false })
+      .limit(50);
+
+    if (error) throw error;
+
+    // Flatten the join result
+    const logs = (notifs || []).map((n: any) => ({
+      ...n,
+      product_name: n.products?.product_name || 'Unknown',
+      products: undefined,
+    }));
+
     res.json(logs);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch notifications' });
@@ -1028,26 +1216,17 @@ cron.schedule('*/5 * * * *', async () => {
   console.log('[CRON] Running warranty check...');
   try {
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    const thirtyDaysStr = new Date(today.getTime() + 30 * 86400000).toISOString().split('T')[0];
+    const sevenDaysStr = new Date(today.getTime() + 7 * 86400000).toISOString().split('T')[0];
 
-    const thirtyDays = new Date();
-    thirtyDays.setDate(today.getDate() + 30);
-    const thirtyDaysStr = thirtyDays.toISOString().split('T')[0];
-
-    const sevenDays = new Date();
-    sevenDays.setDate(today.getDate() + 7);
-    const sevenDaysStr = sevenDays.toISOString().split('T')[0];
-
-    const products30 = db.prepare('SELECT * FROM products WHERE expiry_date = ?').all(thirtyDaysStr) as any[];
-    const products7 = db.prepare('SELECT * FROM products WHERE expiry_date = ?').all(sevenDaysStr) as any[];
+    const { data: products30 } = await supabase.from('products').select('*').eq('expiry_date', thirtyDaysStr);
+    const { data: products7 } = await supabase.from('products').select('*').eq('expiry_date', sevenDaysStr);
 
     const processReminder = async (product: any, type: string) => {
-      const checkStmt = db.prepare('SELECT * FROM notifications WHERE product_id = ? AND type = ? AND status = "SENT"');
-      const existing = checkStmt.get(product.id, type);
+      const { data: existing } = await supabase.from('notifications').select('id').eq('product_id', product.id).eq('type', type).eq('status', 'SENT').single();
       if (existing) return;
 
-      const userStmt = db.prepare('SELECT email, name FROM users WHERE id = ?');
-      const user = userStmt.get(product.user_id) as any;
+      const { data: user } = await supabase.from('users').select('email, name').eq('id', product.user_id).single();
       if (!user) return;
 
       const subject = `⚠️ Warranty Expiring Soon: ${product.product_name}`;
@@ -1055,16 +1234,16 @@ cron.schedule('*/5 * * * *', async () => {
 
       try {
         await sendEmail(user.email, subject, body);
-        db.prepare('INSERT INTO notifications (user_id, product_id, type, status, sent_at) VALUES (?, ?, ?, ?, ?)').run(product.user_id, product.id, type, 'SENT', new Date().toISOString());
+        await supabase.from('notifications').insert({ user_id: product.user_id, product_id: product.id, type, status: 'SENT', sent_at: new Date().toISOString() });
         console.log(`[CRON] Sent ${type} reminder for ${product.product_name}`);
       } catch (e) {
         console.error(`[CRON] Failed to send email for ${product.product_name}`, e);
-        db.prepare('INSERT INTO notifications (user_id, product_id, type, status, error_message) VALUES (?, ?, ?, ?, ?)').run(product.user_id, product.id, type, 'FAILED', String(e));
+        await supabase.from('notifications').insert({ user_id: product.user_id, product_id: product.id, type, status: 'FAILED', error_message: String(e) });
       }
     };
 
-    for (const p of products30) await processReminder(p, '30_DAY');
-    for (const p of products7) await processReminder(p, '7_DAY');
+    for (const p of (products30 || [])) await processReminder(p, '30_DAY');
+    for (const p of (products7 || [])) await processReminder(p, '7_DAY');
 
   } catch (error) {
     console.error('[CRON] Error:', error);
@@ -1074,38 +1253,37 @@ cron.schedule('*/5 * * * *', async () => {
 // ── Demo Data Seeding (Dev Only) ─────────────────────────────────────
 app.post('/api/seed-demo', async (req, res) => {
   try {
-    // Security: only allow in development
     if (process.env.NODE_ENV === 'production') {
       return res.status(403).json({ error: 'Demo seeding is disabled in production' });
     }
 
-    const bcryptModule = await import('bcryptjs');
     const email = 'shravani@warrify.com';
-    const password = 'demo123';
-    const hashedPassword = await bcryptModule.hash(password, 10);
     const name = 'Shravani Dakve';
 
-    let userId: any;
-    try {
-      const stmt = db.prepare('INSERT INTO users (name, email, password, city) VALUES (?, ?, ?, ?)');
-      const info = stmt.run(name, email, hashedPassword, 'Mumbai');
-      userId = info.lastInsertRowid;
-    } catch (e: any) {
-      if (e.code === 'SQLITE_CONSTRAINT_UNIQUE') {
-        const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email) as any;
-        userId = user.id;
-      } else {
-        throw e;
-      }
+    // Check if user exists
+    let userId: string;
+    const { data: existingUser } = await supabase.from('users').select('id').eq('email', email).single();
+
+    if (existingUser) {
+      userId = existingUser.id;
+    } else {
+      // Create a placeholder user (normally done via Firebase sync)
+      const { data: newUser, error } = await supabase.from('users').insert({
+        firebase_uid: 'demo-seed-user',
+        name,
+        email,
+        city: 'Mumbai',
+      }).select('id').single();
+      if (error) throw error;
+      userId = newUser!.id;
     }
 
     // Clear existing data
-    db.prepare('DELETE FROM notifications WHERE user_id = ?').run(userId);
-    db.prepare('DELETE FROM products WHERE user_id = ?').run(userId);
+    await supabase.from('notifications').delete().eq('user_id', userId);
+    await supabase.from('products').delete().eq('user_id', userId);
 
     const today = new Date();
 
-    // 12 diverse demo products with claim scenarios
     const products = [
       { name: 'Samsung Galaxy S24 Ultra', brand: 'Samsung', cat: 'Electronics', price: 129999, inv: 'SAM-2025-78432', wm: 12, daysToExpiry: 22, notes: 'Primary phone, 256GB Titanium Black', claim: null },
       { name: 'LG Front Load Washing Machine', brand: 'LG', cat: 'Appliances', price: 42990, inv: 'LG-2024-55123', wm: 24, daysToExpiry: 8, notes: '8kg capacity, AI Direct Drive', claim: null },
@@ -1121,12 +1299,6 @@ app.post('/api/seed-demo', async (req, res) => {
       { name: 'Panasonic Microwave Oven', brand: 'Panasonic', cat: 'Appliances', price: 11490, inv: 'PAN-2025-44321', wm: 12, daysToExpiry: 3, notes: '27L Convection — URGENT: claim pending', claim: 'pending' },
     ];
 
-    const insertProduct = db.prepare(`
-      INSERT INTO products (user_id, product_name, brand, category, purchase_date, warranty_months, expiry_date, purchase_price, invoice_number, notes, claim_status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    const insertNotif = db.prepare('INSERT INTO notifications (user_id, product_id, type, status, sent_at) VALUES (?, ?, ?, ?, ?)');
-
     const productIds: number[] = [];
     for (const p of products) {
       const expiry = new Date(today);
@@ -1134,16 +1306,15 @@ app.post('/api/seed-demo', async (req, res) => {
       const purchase = new Date(expiry);
       purchase.setMonth(purchase.getMonth() - p.wm);
 
-      const info = insertProduct.run(
-        userId, p.name, p.brand, p.cat,
-        purchase.toISOString().split('T')[0], p.wm,
-        expiry.toISOString().split('T')[0],
-        p.price, p.inv, p.notes, p.claim
-      );
-      productIds.push(info.lastInsertRowid as number);
+      const { data: inserted } = await supabase.from('products').insert({
+        user_id: userId, product_name: p.name, brand: p.brand, category: p.cat,
+        purchase_date: purchase.toISOString().split('T')[0], warranty_months: p.wm,
+        expiry_date: expiry.toISOString().split('T')[0],
+        purchase_price: p.price, invoice_number: p.inv, notes: p.notes, claim_status: p.claim
+      }).select('id').single();
+      productIds.push(inserted!.id);
     }
 
-    // Seed notifications
     const notifs = [
       { idx: 0, type: 'PRODUCT_ADDED', daysAgo: 365 },
       { idx: 1, type: '30_DAY', daysAgo: 22 },
@@ -1159,13 +1330,15 @@ app.post('/api/seed-demo', async (req, res) => {
     for (const n of notifs) {
       const d = new Date(today);
       d.setDate(d.getDate() - n.daysAgo);
-      insertNotif.run(userId, productIds[n.idx], n.type, 'SENT', d.toISOString());
+      await supabase.from('notifications').insert({
+        user_id: userId, product_id: productIds[n.idx], type: n.type, status: 'SENT', sent_at: d.toISOString()
+      });
     }
 
     res.json({
       success: true,
       message: `Seeded ${products.length} products for demo`,
-      credentials: { email, password },
+      credentials: { email, note: 'Use Firebase Auth to login' },
       stats: {
         products: products.length,
         active: products.filter(p => p.daysToExpiry > 0).length,

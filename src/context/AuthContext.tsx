@@ -1,8 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import {
+  auth,
+  onAuthStateChanged,
+  signOut as firebaseSignOut,
+  type User as FirebaseUser,
+} from '../lib/firebase';
 
 interface User {
-  id: number;
+  id: string;
   name: string;
   email: string;
 }
@@ -10,7 +16,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (token: string, user: User) => void;
+  login: (firebaseUser: FirebaseUser) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -24,34 +30,66 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    if (storedToken && storedUser) {
-      try {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
-        axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-      } catch (e) {
-        console.error('Failed to parse stored user', e);
-        localStorage.removeItem('token');
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const idToken = await firebaseUser.getIdToken();
+          setToken(idToken);
+          axios.defaults.headers.common['Authorization'] = `Bearer ${idToken}`;
+
+          // Sync user to Supabase backend
+          const res = await axios.post('/api/auth/sync-user', {
+            name: firebaseUser.displayName || 'User',
+            email: firebaseUser.email || '',
+          });
+
+          setUser(res.data.user);
+          localStorage.setItem('user', JSON.stringify(res.data.user));
+        } catch (e) {
+          console.error('Failed to sync user:', e);
+          setUser(null);
+          setToken(null);
+          delete axios.defaults.headers.common['Authorization'];
+        }
+      } else {
+        setUser(null);
+        setToken(null);
         localStorage.removeItem('user');
+        delete axios.defaults.headers.common['Authorization'];
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    });
 
     // Setup axios interceptor to catch 401/403 and automatically logout
     const responseInterceptor = axios.interceptors.response.use(
       (response) => response,
-      (error) => {
+      async (error) => {
         if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-          setToken(null);
-          setUser(null);
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          delete axios.defaults.headers.common['Authorization'];
-          // Use window.location as a reliable way to boot to login on 403
-          if (window.location.pathname !== '/login') {
-            window.location.href = '/login';
+          // Try to refresh the token
+          const currentUser = auth.currentUser;
+          if (currentUser) {
+            try {
+              const newToken = await currentUser.getIdToken(true);
+              setToken(newToken);
+              axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+              // Retry the failed request
+              error.config.headers['Authorization'] = `Bearer ${newToken}`;
+              return axios.request(error.config);
+            } catch (refreshError) {
+              // Token refresh failed, logout
+              await firebaseSignOut(auth);
+              setToken(null);
+              setUser(null);
+              localStorage.removeItem('user');
+              delete axios.defaults.headers.common['Authorization'];
+              if (window.location.pathname !== '/login') {
+                window.location.href = '/login';
+              }
+            }
+          } else {
+            if (window.location.pathname !== '/login') {
+              window.location.href = '/login';
+            }
           }
         }
         return Promise.reject(error);
@@ -59,22 +97,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     return () => {
+      unsubscribe();
       axios.interceptors.response.eject(responseInterceptor);
     };
   }, []);
 
-  const login = (newToken: string, newUser: User) => {
-    setToken(newToken);
-    setUser(newUser);
-    localStorage.setItem('token', newToken);
-    localStorage.setItem('user', JSON.stringify(newUser));
-    axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+  const login = async (firebaseUser: FirebaseUser) => {
+    const idToken = await firebaseUser.getIdToken();
+    setToken(idToken);
+    axios.defaults.headers.common['Authorization'] = `Bearer ${idToken}`;
+
+    // Sync user to Supabase backend
+    const res = await axios.post('/api/auth/sync-user', {
+      name: firebaseUser.displayName || 'User',
+      email: firebaseUser.email || '',
+    });
+
+    setUser(res.data.user);
+    localStorage.setItem('user', JSON.stringify(res.data.user));
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await firebaseSignOut(auth);
+    } catch (e) {
+      console.error('Firebase sign out error:', e);
+    }
     setToken(null);
     setUser(null);
-    localStorage.removeItem('token');
     localStorage.removeItem('user');
     delete axios.defaults.headers.common['Authorization'];
   };

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+import { auth, createUserWithEmailAndPassword, updateProfile } from '../lib/firebase';
 import { Lock, Mail, User, ShieldCheck, Loader, ArrowRight } from 'lucide-react';
 
 export default function Signup() {
@@ -9,6 +10,7 @@ export default function Signup() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -23,10 +25,22 @@ export default function Signup() {
     }
 
     try {
-      await axios.post('/api/auth/signup', { name, email, password });
-      navigate('/login');
+      // Create user in Firebase
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+
+      // Set display name in Firebase
+      await updateProfile(userCredential.user, { displayName: name });
+
+      // Sync to Supabase and login
+      await login(userCredential.user);
+
+      navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Signup failed. Please try again.');
+      const code = err.code;
+      if (code === 'auth/email-already-in-use') setError('An account with this email already exists.');
+      else if (code === 'auth/invalid-email') setError('Invalid email address.');
+      else if (code === 'auth/weak-password') setError('Password is too weak. Use at least 6 characters.');
+      else setError(err.message || 'Signup failed. Please try again.');
     } finally {
       setLoading(false);
     }

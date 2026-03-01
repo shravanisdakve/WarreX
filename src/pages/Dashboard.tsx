@@ -187,13 +187,7 @@ export default function Dashboard() {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -15 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
-      className="space-y-5"
-    >
+    <div className="space-y-5">
       {/* ===== COMPACT OVERVIEW GRID ===== */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {/* Total */}
@@ -580,6 +574,6 @@ export default function Dashboard() {
           )}
         </ul>
       </div>
-    </motion.div>
+    </div>
   );
 }

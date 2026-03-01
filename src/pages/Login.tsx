@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { auth, signInWithEmailAndPassword } from '../lib/firebase';
 import { Lock, Mail, ShieldCheck, Loader, ArrowRight } from 'lucide-react';
 
 export default function Login() {
@@ -17,11 +17,15 @@ export default function Login() {
     setLoading(true);
     setError('');
     try {
-      const response = await axios.post('/api/auth/login', { email, password });
-      login(response.data.token, response.data.user);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      await login(userCredential.user);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Login failed. Please try again.');
+      const code = err.code;
+      if (code === 'auth/user-not-found') setError('No account found with this email.');
+      else if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') setError('Invalid email or password.');
+      else if (code === 'auth/too-many-requests') setError('Too many attempts. Please try again later.');
+      else setError(err.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
