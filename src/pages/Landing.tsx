@@ -1,8 +1,13 @@
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
 import { ShieldCheck, Sparkles, Bell, Brain, TrendingUp, ArrowRight, CheckCircle, Zap, Shield, Clock, Mail, Scale, FileWarning, Users, Gavel, Heart } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../context/AuthContext';
 
 export default function Landing() {
     const { t, i18n } = useTranslation();
+    const { isAuthenticated } = useAuth();
     const [activeTestimonial, setActiveTestimonial] = useState(0);
 
     const COMPETITOR_DATA = [
@@ -75,22 +80,50 @@ export default function Landing() {
                     <div className="flex items-center gap-2">
                         <ShieldCheck className="w-7 h-7 text-indigo-400" />
                         <span className="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-                            Warrify
+                            WarreX
                         </span>
                     </div>
                     <div className="flex items-center gap-3">
-                        <Link
-                            to="/login"
-                            className="px-4 py-2 text-sm font-medium text-indigo-300 hover:text-white transition-colors"
-                        >
-                            {t('sign_in')}
-                        </Link>
-                        <Link
-                            to="/signup"
-                            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-all hover:shadow-lg hover:shadow-indigo-500/25"
-                        >
-                            {t('get_started_free')}
-                        </Link>
+                        <div className="hidden sm:flex bg-white/5 rounded-lg border border-white/5 mr-2">
+                            {['en', 'hi', 'mr'].map((lang) => (
+                                <button
+                                    key={lang}
+                                    onClick={() => {
+                                        localStorage.setItem('appLanguage', lang);
+                                        i18n.changeLanguage(lang);
+                                    }}
+                                    className={`px-2 py-1 text-xs font-bold rounded-md transition-all ${i18n.language === lang
+                                        ? 'bg-indigo-500/20 text-indigo-300 shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                                        }`}
+                                >
+                                    {lang === 'en' ? 'EN' : lang === 'hi' ? 'हि' : 'मर'}
+                                </button>
+                            ))}
+                        </div>
+                        {isAuthenticated ? (
+                            <Link
+                                to="/dashboard"
+                                className="px-5 py-2.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 text-sm font-semibold rounded-xl border border-indigo-500/20 transition-all"
+                            >
+                                {t('back_to_dashboard')}
+                            </Link>
+                        ) : (
+                            <>
+                                <Link
+                                    to="/login"
+                                    className="px-4 py-2 text-sm font-medium text-indigo-300 hover:text-white transition-colors"
+                                >
+                                    {t('sign_in')}
+                                </Link>
+                                <Link
+                                    to="/signup"
+                                    className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-all hover:shadow-lg hover:shadow-indigo-500/25"
+                                >
+                                    {t('get_started_free')}
+                                </Link>
+                            </>
+                        )}
                     </div>
                 </div>
             </nav>
@@ -122,7 +155,7 @@ export default function Landing() {
 
                     <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                         <Link
-                            to="/signup"
+                            to={isAuthenticated ? "/dashboard" : "/signup"}
                             className="group inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-lg font-bold rounded-2xl transition-all hover:shadow-2xl hover:shadow-indigo-500/30 hover:scale-105"
                         >
                             {t('landing_cta_btn')}
@@ -254,7 +287,7 @@ export default function Landing() {
                     >
                         <div className="grid grid-cols-4 gap-0 text-sm">
                             <div className="p-4 font-semibold text-slate-400 border-b border-white/10">{t('feature_label', 'Feature')}</div>
-                            <div className="p-4 font-bold text-indigo-400 text-center border-b border-white/10 bg-indigo-500/5">Warrify</div>
+                            <div className="p-4 font-bold text-indigo-400 text-center border-b border-white/10 bg-indigo-500/5">WarreX</div>
                             <div className="p-4 font-semibold text-slate-500 text-center border-b border-white/10">Samsung Members</div>
                             <div className="p-4 font-semibold text-slate-500 text-center border-b border-white/10">JioSure</div>
 
@@ -327,14 +360,14 @@ export default function Landing() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="p-8 bg-white/5 rounded-3xl border border-white/10 hover:bg-white/10 transition-colors">
                             <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                                <span className="px-2 py-1 bg-indigo-500 rounded text-[10px] uppercase font-black">{fNum('Phase 2')}</span>
+                                <span className="px-2 py-1 bg-indigo-500 rounded text-[10px] uppercase font-black">{t('phase_2')}</span>
                                 {t('roadmap_p2_title')}
                             </h3>
                             <p className="text-sm text-slate-400 leading-relaxed">{t('roadmap_p2_desc')}</p>
                         </div>
                         <div className="p-8 bg-white/5 rounded-3xl border border-white/10 hover:bg-white/10 transition-colors">
                             <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                                <span className="px-2 py-1 bg-purple-500 rounded text-[10px] uppercase font-black">{fNum('Phase 3')}</span>
+                                <span className="px-2 py-1 bg-purple-500 rounded text-[10px] uppercase font-black">{t('phase_3')}</span>
                                 {t('roadmap_p3_title')}
                             </h3>
                             <p className="text-sm text-slate-400 leading-relaxed">{t('roadmap_p3_desc')}</p>
@@ -359,7 +392,7 @@ export default function Landing() {
                         {t('justice_desc')}
                     </p>
                     <Link
-                        to="/signup"
+                        to={isAuthenticated ? "/dashboard" : "/signup"}
                         className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-lg font-bold rounded-2xl transition-all hover:shadow-2xl hover:shadow-indigo-500/30"
                     >
                         {t('start_protecting')}
