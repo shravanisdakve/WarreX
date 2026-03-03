@@ -14,7 +14,7 @@
 export const BRANDS = [
     "Samsung", "LG", "Sony", "Apple", "HP", "Dell", "Lenovo",
     "Whirlpool", "Bosch", "OnePlus", "Xiaomi", "Realme",
-    "Panasonic", "Godrej", "Voltas", "Haier", "Asus", "Acer",
+    "Panasonic", "Godrej", "Voltas", "Haier", "Asus", "Acer", "Other",
 ] as const;
 
 export type Brand = (typeof BRANDS)[number];
