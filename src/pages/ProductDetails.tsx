@@ -203,29 +203,7 @@ export default function ProductDetails() {
     }
   };
 
-  if (loading) return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      {/* Skeleton loading */}
-      <div className="animate-pulse space-y-4">
-        <div className="h-4 bg-slate-800/50 rounded w-32" />
-        <div className="bg-[#151c2e] rounded-2xl p-6 space-y-4">
-          <div className="flex justify-between">
-            <div className="space-y-2">
-              <div className="h-6 bg-slate-800 rounded w-48" />
-              <div className="h-4 bg-slate-800 rounded w-32" />
-            </div>
-            <div className="h-8 bg-slate-800 rounded-full w-24" />
-          </div>
-          <div className="h-3 bg-slate-800 rounded" />
-          <div className="space-y-3 mt-4">
-            <div className="h-12 bg-slate-800/50 rounded" />
-            <div className="h-12 bg-slate-800/50 rounded" />
-            <div className="h-12 bg-slate-800/50 rounded" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  if (loading) return null;
 
   if (!product) return (
     <div className="text-center py-20">
@@ -624,10 +602,16 @@ export default function ProductDetails() {
           <div className="p-6">
             <div className="space-y-3">
               {serviceInfo.centers.map((center, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10 transition-all">
-                  <MapPin className="w-4 h-4 text-slate-500 flex-shrink-0" />
-                  <span className="text-sm text-slate-300">{center}</span>
-                </div>
+                <a
+                  key={i}
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(center + ' ' + (product.brand || ''))}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10 hover:border-indigo-500/30 transition-all group"
+                >
+                  <MapPin className="w-4 h-4 text-slate-500 group-hover:text-emerald-400 flex-shrink-0 transition-colors" />
+                  <span className="text-sm text-slate-300 group-hover:text-white transition-colors">{center}</span>
+                </a>
               ))}
             </div>
           </div>
