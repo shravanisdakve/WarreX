@@ -25,9 +25,12 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem('user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+  const [isLoading, setIsLoading] = useState(!localStorage.getItem('user'));
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -35,6 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const idToken = await firebaseUser.getIdToken();
           setToken(idToken);
+          localStorage.setItem('token', idToken);
           axios.defaults.headers.common['Authorization'] = `Bearer ${idToken}`;
 
           // Sync user to Supabase backend
@@ -55,6 +59,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
         setToken(null);
         localStorage.removeItem('user');
+        localStorage.removeItem('token');
         delete axios.defaults.headers.common['Authorization'];
       }
       setIsLoading(false);
@@ -115,6 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setUser(res.data.user);
     localStorage.setItem('user', JSON.stringify(res.data.user));
+    localStorage.setItem('token', idToken);
   };
 
   const logout = async () => {
@@ -126,6 +132,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(null);
     setUser(null);
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
     delete axios.defaults.headers.common['Authorization'];
   };
 
