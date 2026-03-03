@@ -1,6 +1,115 @@
 export const serviceDirectory: Record<string, any> = process.env.SERVICE_DIRECTORY
     ? JSON.parse(process.env.SERVICE_DIRECTORY)
-    : {};
+    : {
+        "Samsung": {
+            "phone": "1800-407-267864",
+            "email": "support.india@samsung.com",
+            "website": "https://www.samsung.com/in/support/",
+            "centers": ["Samsung Plaza, Worli, Mumbai", "Service HQ, Bandra Kurla Complex, Mumbai", "Electronics City, Phase 1, Bengaluru", "Sector 18, Noida, NCR"]
+        },
+        "LG": {
+            "phone": "1800-315-9999",
+            "email": "serviceindia@lge.com",
+            "website": "https://www.lg.com/in/support",
+            "centers": ["LG Care Tower, Andheri East, Mumbai", "Regional Hub, Okhla Phase 3, Delhi", "Tech Support Center, Guindy, Chennai"]
+        },
+        "Sony": {
+            "phone": "1800-103-7799",
+            "email": "sonyindia.care@ap.sony.com",
+            "website": "https://www.sony.co.in/electronics/support",
+            "centers": ["Sony Center, Kemps Corner, Mumbai", "Authorized Hub, Connaught Place, Delhi", "Sony Service Point, Anna Nagar, Chennai"]
+        },
+        "Apple": {
+            "phone": "000800-100-9009",
+            "email": "contactus.in@apple.com",
+            "website": "https://support.apple.com/en-in",
+            "centers": ["Apple BKC, Mumbai", "Apple Saket, Delhi", "Maple Authorized Service, Vashi, Navi Mumbai"]
+        },
+        "HP": {
+            "phone": "1800-258-7170",
+            "email": "hpcare_india@hp.com",
+            "website": "https://support.hp.com/in-en",
+            "centers": ["HP World, Lamington Road, Mumbai", "Laptop Repair Hub, Nehru Place, Delhi", "HP Service Plus, Indiranagar, Bengaluru"]
+        },
+        "Dell": {
+            "phone": "1800-425-4002",
+            "email": "india_support@dell.com",
+            "website": "https://www.dell.com/support/home/en-in",
+            "centers": ["Dell Exclusive Store, Fort, Mumbai", "Dell Service Center, Janakpuri, Delhi", "Technical Hub, Domlur, Bengaluru"]
+        },
+        "Whirlpool": {
+            "phone": "1800-208-1800",
+            "email": "helpdeskindia@whirlpool.com",
+            "website": "https://www.whirlpoolindia.com/service-support",
+            "centers": ["Whirlpool Solutions, Goregaon East, Mumbai", "Regional Service Center, Gurgaon, NCR"]
+        },
+        "Voltas": {
+            "phone": "1860-599-4555",
+            "email": "vcare@voltas.com",
+            "website": "https://www.voltas.com/pages/customer-care",
+            "centers": ["Voltas House, Chinchpokli, Mumbai", "Aircon Hub, Sector 63, Noida"]
+        },
+        "OnePlus": {
+            "phone": "1800-102-8411",
+            "email": "support.in@oneplus.com",
+            "website": "https://www.oneplus.in/support",
+            "centers": ["OnePlus Boulevard, Lower Parel, Mumbai", "Exclusive Service Center, Brigade Road, Bengaluru"]
+        },
+        "Lenovo": {
+            "phone": "1800-4199-733",
+            "email": "consumercare@lenovo.com",
+            "website": "https://support.lenovo.com/in/en/",
+            "centers": ["Lenovo Support, Lamington Road, Mumbai", "Technical Center, Nehru Place, Delhi"]
+        },
+        "Xiaomi": {
+            "phone": "1800-103-6286",
+            "email": "service.in@xiaomi.com",
+            "website": "https://www.mi.com/in/service/repair/",
+            "centers": ["Mi Home, Phoenix Marketcity, Mumbai", "Xiaomi Service Hub, Karol Bagh, Delhi"]
+        },
+        "Realme": {
+            "phone": "1800-102-2777",
+            "email": "service.in@realme.com",
+            "website": "https://www.realme.com/in/support",
+            "centers": ["Realme Service, Vashi, Navi Mumbai", "Direct Center, Tilak Nagar, Delhi"]
+        },
+        "Panasonic": {
+            "phone": "1800-103-1333",
+            "email": "helpline@in.panasonic.com",
+            "website": "https://www.panasonic.com/in/support.html",
+            "centers": ["Panasonic Hub, Santacruz, Mumbai", "Service Center, Gurgaon Sector 14"]
+        },
+        "Godrej": {
+            "phone": "1800-209-5511",
+            "email": "smartcare@godrej.com",
+            "website": "https://www.godrej.com/service-and-support",
+            "centers": ["Godrej Pirojshanagar, Vikhroli, Mumbai", "Regional Hub, Okhla, Delhi"]
+        },
+        "Haier": {
+            "phone": "1800-102-9999",
+            "email": "customercare@haierindia.com",
+            "website": "https://www.haier.com/in/support/",
+            "centers": ["Haier Service, Kanjurmarg, Mumbai", "Regional Center, Noida Phase 2"]
+        },
+        "Asus": {
+            "phone": "1800-209-0365",
+            "email": "rc_india@asus.com",
+            "website": "https://www.asus.com/in/support/",
+            "centers": ["Asus ROG Hub, Andheri, Mumbai", "Service Point, Nehru Place, Delhi"]
+        },
+        "Acer": {
+            "phone": "1800-11-6677",
+            "email": "ail.easycare@acer.com",
+            "website": "https://www.acer.com/in-en/support",
+            "centers": ["Acer Care, Borivali, Mumbai", "Technical Point, Janakpuri, Delhi"]
+        },
+        "Bosch": {
+            "phone": "1800-266-1880",
+            "email": "service.in@bosch.com",
+            "website": "https://www.bosch-home.in/service/get-support",
+            "centers": ["Bosch Home, Worli, Mumbai", "Regional Service Center, Gurgaon"]
+        }
+    };
 
 // Common failure data for Claim Intelligence Engine
 export const commonFailures: Record<string, Record<string, string[]>> = process.env.COMMON_FAILURES
