@@ -15,46 +15,20 @@ import './i18n';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
+  const hasCachedUser = !!localStorage.getItem('user');
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0a0e1a]">
-        <div className="space-y-4 w-full max-w-md px-6">
-          <div className="animate-pulse flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-900/50 rounded-xl" />
-            <div className="h-5 bg-indigo-900/30 rounded w-24" />
-          </div>
-          <div className="animate-pulse space-y-3">
-            <div className="h-32 bg-slate-800/50 rounded-2xl" />
-            <div className="grid grid-cols-4 gap-3">
-              <div className="h-16 bg-slate-800/50 rounded-xl" />
-              <div className="h-16 bg-slate-800/50 rounded-xl" />
-              <div className="h-16 bg-slate-800/50 rounded-xl" />
-              <div className="h-16 bg-slate-800/50 rounded-xl" />
-            </div>
-            <div className="h-12 bg-slate-800/50 rounded-xl" />
-            <div className="space-y-2">
-              <div className="h-16 bg-slate-800/30 rounded-xl" />
-              <div className="h-16 bg-slate-800/30 rounded-xl" />
-              <div className="h-16 bg-slate-800/30 rounded-xl" />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
+  if (isLoading && !hasCachedUser) return null;
+  if (!isAuthenticated && !hasCachedUser && !isLoading) return <Navigate to="/login" replace />;
   return <>{children}</>;
 };
 
 // Redirect to dashboard if logged in
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
-  if (isLoading) return null;
-  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+  const hasCachedUser = !!localStorage.getItem('user');
+
+  if (isLoading && !hasCachedUser) return null;
+  if (isAuthenticated || hasCachedUser) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 };
 
@@ -63,11 +37,11 @@ export default function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
+          <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
 
-          <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+          <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="add-product" element={<AddProduct />} />
             <Route path="product/:id" element={<ProductDetails />} />
