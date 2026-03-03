@@ -66,13 +66,14 @@ const resources = {
       "purchased_to": "Purchased To",
       "product_name_label": "Product Name",
       "brand_label": "Brand",
+      "custom_brand_label": "Brand Name",
       "category_label": "Category",
       "purchase_date_label": "Purchase Date",
       "warranty_period_label": "Warranty Period",
       "invoice_number_label": "Invoice Number",
       "purchase_price_label": "Purchase Price",
       "notes_label": "Notes",
-      "select_brand_placeholder": "Select or type brand",
+      "select_brand_placeholder": "Select Brand",
       "months": "Months",
       "all_categories": "All Categories",
       "faded_receipt_warning": "Thermal receipt detected — these fade within 3-6 months!",
@@ -161,7 +162,17 @@ const resources = {
       "roadmap_p2_title": "Phase 2: Consumer Court Integration",
       "roadmap_p2_desc": "File formal consumer complaints via the National Consumer Helpline (1915) directly through Warrify. Auto-populate complaint forms with digitized warranty data.",
       "roadmap_p3_title": "Phase 3: Rural India Outreach",
-      "roadmap_p3_desc": "WhatsApp-based warranty registration for users without smartphones apps. Voice-based claim filing in 10+ Indian languages. Offline-first architecture."
+      "roadmap_p3_desc": "WhatsApp-based warranty registration for users without smartphones apps. Voice-based claim filing in 10+ Indian languages. Offline-first architecture.",
+      "testimonial_meera": "My mixer grinder receipt had completely faded. The shopkeeper refused to honour the warranty. Warrify had my digital copy — Samsung repaired it for free.",
+      "role_meera": "Homemaker, Dharavi",
+      "testimonial_rajesh": "I'm a rickshaw driver. I bought a phone worth ₹12,000 — my whole month's savings. When it broke, Warrify helped me file a proper claim in Hindi.",
+      "role_rajesh": "Auto Driver, Pune",
+      "testimonial_anita": "The AI drafted a complaint email that sounded like a lawyer wrote it. LG approved my washing machine repair within 3 days.",
+      "role_anita": "School Teacher, Mumbai",
+      "feature_label": "Feature",
+      "click_for_details": "Click for details",
+      "phase_2": "Phase 2",
+      "phase_3": "Phase 3"
     }
   },
   hi: {
@@ -227,13 +238,14 @@ const resources = {
       "purchased_to": "तक खरीदा गया",
       "product_name_label": "उत्पाद का नाम",
       "brand_label": "ब्रांड",
+      "custom_brand_label": "ब्रांड का नाम",
       "category_label": "श्रेणी",
       "purchase_date_label": "खरीदने की तिथि",
       "warranty_period_label": "वारंटी अवधि",
       "invoice_number_label": "चालान संख्या",
       "purchase_price_label": "खरीद मूल्य",
       "notes_label": "नोट्स",
-      "select_brand_placeholder": "ब्रांड चुनें या टाइप करें",
+      "select_brand_placeholder": "ब्रांड चुनें",
       "months": "महीने",
       "all_categories": "सभी श्रेणियां",
       "faded_receipt_warning": "थर्मल रसीद का पता चला — ये 3-6 महीनों में धुंधली हो जाती हैं!",
@@ -322,7 +334,17 @@ const resources = {
       "roadmap_p2_title": "चरण 2: उपभोक्ता न्यायालय एकीकरण",
       "roadmap_p2_desc": "वारिफाई के माध्यम से सीधे राष्ट्रीय उपभोक्ता हेल्पलाइन (1915) पर औपचारिक उपभोक्ता शिकायतें दर्ज करें। डिजिटल वारंटी डेटा के साथ शिकायत फॉर्म भरें।",
       "roadmap_p3_title": "चरण 3: ग्रामीण भारत आउटरीच",
-      "roadmap_p3_desc": "बिना स्मार्टफोन ऐप वाले उपयोगकर्ताओं के लिए व्हाट्सएप-आधारित वारंटी पंजीकरण। 10+ भारतीय भाषाओं में वॉयस-आधारित दावा फाइलिंग। ऑफलाइन-प्रथम आर्किटेक्चर।"
+      "roadmap_p3_desc": "बिना स्मार्टफोन ऐप वाले उपयोगकर्ताओं के लिए व्हाट्सएप-आधारित वारंटी पंजीकरण। 10+ भारतीय भाषाओं में वॉयस-आधारित दावा फाइलिंग। ऑफलाइन-प्रथम आर्किटेक्चर।",
+      "testimonial_meera": "मेरी मिक्सर ग्राइंडर की रसीद पूरी तरह धुंधली हो गई थी। दुकानदार ने वारंटी देने से मना कर दिया। वारिफाई के पास मेरी डिजिटल कॉपी थी — सैमसंग ने इसे मुफ्त में ठीक किया।",
+      "role_meera": "गृहिणी, धारावी",
+      "testimonial_rajesh": "मैं एक रिक्शा चालक हूँ। मैंने ₹12,000 का फोन खरीदा था — मेरी पूरे महीने की बचत। जब वह टूटा, तो वारिफाई ने मुझे हिंदी में उचित दावा दायर करने में मदद की।",
+      "role_rajesh": "ऑटो चालक, पुणे",
+      "testimonial_anita": "AI ने ऐसा शिकायत ईमेल ड्राफ्ट किया जैसे किसी वकील ने लिखा हो। LG ने 3 दिनों के भीतर मेरी वाशिंग मशीन की मरम्मत मंजूर कर ली।",
+      "role_anita": "स्कूल शिक्षिका, मुंबई",
+      "feature_label": "सुविधा",
+      "click_for_details": "विवरण के लिए क्लिक करें",
+      "phase_2": "चरण 2",
+      "phase_3": "चरण 3"
     }
   },
   mr: {
@@ -388,13 +410,14 @@ const resources = {
       "purchased_to": "पर्यंत खरेदी केलेले",
       "product_name_label": "उत्पादनाचे नाव",
       "brand_label": "ब्रँड",
+      "custom_brand_label": "ब्रँडचे नाव",
       "category_label": "श्रेणी",
       "purchase_date_label": "खरेदीची तारीख",
       "warranty_period_label": "वारंटी कालावधी",
       "invoice_number_label": "इनव्हॉइस क्रमांक",
       "purchase_price_label": "खरेदी किंमत",
       "notes_label": "नोट्स",
-      "select_brand_placeholder": "ब्रँड निवडा किंवा टाइप करा",
+      "select_brand_placeholder": "ब्रँड निवडा",
       "months": "महिने",
       "all_categories": "सर्व श्रेणी",
       "faded_receipt_warning": "थर्मल रसीद आढळली — ही ३-६ महिन्यांत फिकट होते!",
@@ -483,16 +506,28 @@ const resources = {
       "roadmap_p2_title": "चरण २: ग्राहक न्यायालय एकीकरण",
       "roadmap_p2_desc": "वॅरिफायद्वारे थेट राष्ट्रीय ग्राहक हेल्पलाइन (१९१५) वर औपचारिक ग्राहक तक्रारी नोंदवा. डिजिटल वारंटी डेटासह तक्रार फॉर्म भरा.",
       "roadmap_p3_title": "चरण ३: ग्रामीण भारत पोहोच",
-      "roadmap_p3_desc": "स्मार्टफोन ॲप्स नसलेल्या वापरकर्त्यांसाठी व्हाट्सएप-आधारित वारंटी नोंदणी. १०+ भारतीय भाषांमध्ये व्हॉइस-आधारित दावा फाइलिंग. ऑफलाइन-प्रथम आर्किटेक्चर।"
+      "roadmap_p3_desc": "स्मार्टफोन ॲप्स नसलेल्या वापरकर्त्यांसाठी व्हाट्सएप-आधारित वारंटी नोंदणी. १०+ भारतीय भाषांमध्ये व्हॉइस-आधारित दावा फाइलिंग. ऑफलाइन-प्रथम आर्किटेक्चर.",
+      "testimonial_meera": "माझ्या मिक्सर ग्राइंडरची पावती पूर्णपणे फिकट झाली होती. दुकानदाराने वॉरंटी देण्यास नकार दिला. वॅरिफायकडे माझी डिजिटल प्रत होती — सॅमसंगने ती मोफत दुरुस्त केली.",
+      "role_meera": "गृहिणी, धारावी",
+      "testimonial_rajesh": "मी एक रिक्शाचालक आहे. मी ₹१२,००० चा फोन विकत घेतला — माझ्या पूर्ण महिन्याची बचत. जेव्हा तो तुटला, तेव्हा वॅरिफायने मला मराठीत योग्य दावा दाखल करण्यास मदत केली.",
+      "role_rajesh": "ऑटो चालक, पुणे",
+      "testimonial_anita": "AI ने असा तक्रार ईमेल ड्राफ्ट केला जणू काही वकिलानेच लिहिला आहे. LG ने ३ दिवसांत माझ्या वॉशिंग मशीनची दुरुस्ती मंजूर केली.",
+      "role_anita": "शालेय शिक्षिका, मुंबई",
+      "feature_label": "वैशिष्ट्य",
+      "click_for_details": "तपशीलांसाठी क्लिक करा",
+      "phase_2": "टप्पा २",
+      "phase_3": "टप्पा ३"
     }
   }
 };
+
+const savedLanguage = localStorage.getItem('appLanguage') || 'en';
 
 i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: "en",
+    lng: savedLanguage,
     fallbackLng: "en",
     interpolation: {
       escapeValue: false
