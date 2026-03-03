@@ -1,7 +1,7 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/shield-check.svg" width="80" height="80" alt="Warrify Logo" />
-  <h1>Warrify</h1>
-  <p>AI-Powered Consumer Justice & Warranty Management Platform</p>
+  <img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/shield-check.svg" width="80" height="80" alt="WarreX Logo" />
+  <h1>WarreX</h1>
+  <p>A smart AI vault for lost receipts and warranties. Securely store invoices, track expirations, and get automated email reminders before your claim window closes—never lose money to a missed warranty again.</p>
 </div>
 
 ## Features
