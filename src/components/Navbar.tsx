@@ -52,6 +52,7 @@ export default function Navbar({ sidebarOpen, setSidebarOpen }: NavbarProps) {
     };
 
     const changeLanguage = (lng: string) => {
+        localStorage.setItem('appLanguage', lng);
         i18n.changeLanguage(lng);
     };
 
@@ -93,7 +94,7 @@ export default function Navbar({ sidebarOpen, setSidebarOpen }: NavbarProps) {
                         </div>
                         <div className="flex flex-col">
                             <span className="text-base font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent leading-none">
-                                Warrify
+                                WarreX
                             </span>
                         </div>
                     </Link>
