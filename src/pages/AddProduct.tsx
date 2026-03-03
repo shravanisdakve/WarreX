@@ -67,29 +67,60 @@ function parseFlexibleDate(dateStr: string): Date | null {
 function extractProductName(text: string, detectedBrand: string): string {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 3);
 
-  // Look for lines with "Model" or "Product"
-  const modelRegex = /(?:Model|Product|Item|Description)\s*[:.\-]?\s*(.+)/i;
+  // Expanded noise filter: words that are usually headers
+  const noise = ['description', 'amount', 'unit price', 'qty', 'quantity', 'total', 'subtotal', 'tax', 'gst', 'vat', 'hsn', 'sac', 'sl', 'no', 'code', 'particulars', 'rate'];
+
+  const isHeader = (v: string) => {
+    const vLower = v.toLowerCase();
+    // If line matches exact noise words or combinations like "Description Amount"
+    const words = vLower.split(/[\s|/]+/).filter(w => w.length > 1);
+    if (words.length === 0) return true;
+    const noiseCount = words.filter(w => noise.includes(w)).length;
+    return noiseCount / words.length > 0.5; // If more than 50% of words are noise/headers
+  };
+
+  // 1. Look for specific labels
+  const labelRegex = /(?:Model|Product|Item|Device|Equipment)\s*[:.\-]?\s*(.+)/i;
   for (const line of lines) {
-    const match = line.match(modelRegex);
-    if (match && match[1] && match[1].length > 2 && match[1].length < 80) {
-      return match[1].trim();
+    const match = line.match(labelRegex);
+    if (match && match[1]) {
+      const val = match[1].trim();
+      if (val.length > 2 && val.length < 80 && !isHeader(val)) {
+        return val;
+      }
     }
   }
 
-  // Look for lines containing the brand followed by model info
+  // 2. Look for lines containing the brand + some model description
   if (detectedBrand) {
     for (const line of lines) {
-      if (line.toLowerCase().includes(detectedBrand.toLowerCase())) {
-        // If line has brand + something like a model number
-        const afterBrand = line.substring(line.toLowerCase().indexOf(detectedBrand.toLowerCase()) + detectedBrand.length).trim();
-        if (afterBrand.length > 2 && afterBrand.length < 60) {
-          // Check if it looks like a model
-          if (/[A-Z0-9]/.test(afterBrand)) {
-            return `${detectedBrand} ${afterBrand}`.trim();
-          }
-        }
+      const lowerLine = line.toLowerCase();
+      if (lowerLine.includes(detectedBrand.toLowerCase())) {
+        if (lowerLine === detectedBrand.toLowerCase()) continue;
+        if (isHeader(line)) continue;
+
+        const val = line.trim();
+        if (val.length > 3 && val.length < 60) return val;
       }
     }
+  }
+
+  // 3. Last resort: Find a line with a brand name even if not labeled
+  const commonBrands = ['Samsung', 'Sony', 'Apple', 'LG', 'Bosch', 'HP', 'Dell', 'Whirlpool', 'Voltas', 'OnePlus', 'Lenovo', 'Xiaomi', 'Realme', 'Panasonic', 'Godrej', 'Haier', 'Asus', 'Acer'];
+  for (const line of lines) {
+    for (const b of commonBrands) {
+      if (line.toLowerCase().includes(b.toLowerCase())) {
+        if (isHeader(line)) continue;
+        if (line.length > 3 && line.length < 60) return line.trim();
+      }
+    }
+  }
+
+  // 4. Look for the first meaningful line after a "Description" header (Table strategy)
+  const descIdx = lines.findIndex(l => l.toLowerCase() === 'description' || l.toLowerCase().includes('description amount'));
+  if (descIdx !== -1 && lines[descIdx + 1]) {
+    const candidate = lines[descIdx + 1].trim();
+    if (candidate.length > 3 && !isHeader(candidate)) return candidate;
   }
 
   return '';
@@ -103,6 +134,7 @@ export default function AddProduct() {
   const [formData, setFormData] = useState({
     productName: '',
     brand: '',
+    customBrand: '',
     category: 'Electronics',
     purchaseDate: format(new Date(), 'yyyy-MM-dd'),
     warrantyMonths: 12,
@@ -325,8 +357,11 @@ export default function AddProduct() {
 
     // Detect Price (e.g., "Total: 12,000", "Amount: 2500", "₹ 45000", "Price: 500")
     const pricePatterns = [
-      /(?:Total|Amount|Price|Paid|Value)\s*(?:[:.\-]?|Amt\.?|Sum)?\s*(?:Rs\.?|INR|₹)?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/i,
-      /(?:Rs\.?|INR|₹)\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/
+      /(?:Grand\s*)?Total\s*(?:Amount|Amt|Payable)?\s*[:.\-₹]?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/i,
+      /(?:Net|Final|Total)\s*(?:Amount|Amt|Price)\s*[:.\-₹]?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/i,
+      /(?:Amount|Price|Paid|Value)\s*(?:[:.\-]?|Sum)?\s*(?:Rs\.?|INR|₹)?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/i,
+      /(?:Rs\.?|INR|₹)\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/,
+      /(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s*(?:Rupees|Only)/i
     ];
     for (const pattern of pricePatterns) {
       const match = text.match(pattern);
@@ -368,6 +403,7 @@ export default function AddProduct() {
 
       await axios.post('/api/products', {
         ...formData,
+        brand: formData.brand === 'Other' ? formData.customBrand : formData.brand,
         purchasePrice: formData.purchasePrice ? parseFloat(formData.purchasePrice) : 0,
         expiryDate,
         invoiceFileUrl,
@@ -560,20 +596,33 @@ export default function AddProduct() {
 
             <div>
               <label htmlFor="brand" className="block text-sm font-medium text-slate-400 mb-1">{t('brand_label')}</label>
-              <input
+              <select
                 id="brand"
                 name="brand"
-                type="text"
-                list="brands"
-                placeholder={t('select_brand_placeholder')}
-                className="block w-full bg-white/5 border border-white/10 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 text-sm text-slate-200 placeholder-slate-600 transition-all hover:border-white/20"
+                className="block w-full bg-white/5 border border-white/10 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 text-sm text-slate-200 transition-all hover:border-white/20"
                 value={formData.brand}
                 onChange={e => setFormData({ ...formData, brand: e.target.value })}
-              />
-              <datalist id="brands">
-                {BRANDS.map(b => <option key={b} value={b} />)}
-              </datalist>
+              >
+                <option value="" className="bg-[#151c2e]">{t('select_brand_placeholder')}</option>
+                {BRANDS.map(b => <option key={b} value={b} className="bg-[#151c2e]">{b}</option>)}
+              </select>
             </div>
+
+            {formData.brand === 'Other' && (
+              <div>
+                <label htmlFor="customBrand" className="block text-sm font-medium text-slate-400 mb-1">{t('custom_brand_label', 'Brand Name')} *</label>
+                <input
+                  id="customBrand"
+                  name="customBrand"
+                  type="text"
+                  required
+                  placeholder="e.g., Dyson, Miele..."
+                  className="block w-full bg-white/5 border border-white/10 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 text-sm text-slate-200 placeholder-slate-600 transition-all hover:border-white/20"
+                  value={formData.customBrand}
+                  onChange={e => setFormData({ ...formData, customBrand: e.target.value })}
+                />
+              </div>
+            )}
 
             <div>
               <label htmlFor="category" className="block text-sm font-medium text-slate-400 mb-1">{t('category_label')} *</label>
